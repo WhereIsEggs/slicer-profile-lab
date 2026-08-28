@@ -1,24 +1,32 @@
 import argparse
 from pathlib import Path
 
-from profilelab.loader import load_profile
+from profilelab.validator import find_missing_parents
+
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Inspect and OrcaSlicer profile JSON file."
+        description="Validate an OrcaSlicer profile folder."
     )
     parser.add_argument(
-        "profile_path",
+        "profile_folder",
         type=Path,
-        help="Path to the profile JSON file to inspect.",
+        help="Folder containing profile JSON files.",
     )
     args = parser.parse_args()
     
-    profile = load_profile(args.profile_path)
+    errors = find_missing_parents(args.profile_folder)
     
-    print(f"Profile: {profile.get('name', '(unnamed)')}")
-    print(f"Inherits: {profile.get('inherits', '(no parent)')}")
+    if not errors:
+        print("No missing parent profiles found.")
+        return
     
-    
-if __name__ == "__main__":
-    main()
+    for error in errors:
+        print(
+            f"ERROR: {error['profile']} is missing parent "
+            f"{error['missing_parent']}"
+        )
+        
+        
+        if __name__ == "__main__":
+            main()

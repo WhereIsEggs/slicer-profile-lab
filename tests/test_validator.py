@@ -1,0 +1,24 @@
+import unittest
+from pathlib import Path
+
+from profilelab.validator import find_missing_parents
+
+
+FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "missing_parent"
+
+class MissingParentTests(unittest.TestCase):
+    def test_reports_a_missing_parent(self):
+        errors = find_missing_parents(FIXTURE_FOLDER)
+        
+        self.assertEqual(
+            errors,
+            [
+                {
+                    "profile": "0.24mm Draft @GB4 0.4 nozzle",
+                    "missing_parent": "0.24mm Standard @GB4 0.4 nozzle",
+                }
+            ],
+        )
+        
+        if __name__ == "__main__":
+            unittest.main()
