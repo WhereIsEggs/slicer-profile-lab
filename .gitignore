@@ -1,0 +1,12 @@
+# Python cache files
+__pycache__/
+*.pyc
+
+# Local Python environments
+.venv/
+
+# VS Code local settings
+.vscode/
+
+# Do not commit company/internal profile exports
+profiles/
