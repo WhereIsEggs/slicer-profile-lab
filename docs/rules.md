@@ -1,6 +1,6 @@
 # Validation Rules
 
-## MVP: Missing Parent Profiles
+## MVP(minimum viable product): Missing Parent Profiles
 
 The first version of Slicer Profile Lab will inspect a folder of exported OrcaSlicer profiles.
 

@@ -10,3 +10,6 @@ __pycache__/
 
 # Do not commit company/internal profile exports
 profiles/
+
+# Packaging metadata
+*.egg-info/
