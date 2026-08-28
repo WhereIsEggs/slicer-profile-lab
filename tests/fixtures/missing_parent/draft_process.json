@@ -1,0 +1,5 @@
+{
+    "name": "0.24mm Draft @GB4 0.4 nozzle",
+    "inherits": "0.24mm Standard @GB4 0.4 nozzle",
+    "type": "process"
+}
