@@ -3,6 +3,8 @@ from pathlib import Path
 
 from profilelab.validator import find_missing_parents
 
+from profilelab.loader import InvalidProfileError
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -15,7 +17,11 @@ def main():
     )
     args = parser.parse_args()
 
-    errors = find_missing_parents(args.profile_folder)
+    try:
+        errors = find_missing_parents(args.profile_folder)
+    except InvalidProfileError as error:
+        print(f"ERROR: {error.profile_path}: invalid JSON")
+        return 1
 
     if not errors:
         print("No missing parent profiles found.")
