@@ -3,6 +3,10 @@ from pathlib import Path
 
 from profilelab.validator import find_missing_parents
 
+from unittest.mock import patch
+
+from profilelab.cli import main
+
 FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "missing_parent"
 VALID_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "valid_parent"
 ROOT_PROFILE_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "root_profile"
@@ -31,6 +35,14 @@ class MissingParentTests(unittest.TestCase):
         errors = find_missing_parents(VALID_FIXTURE_FOLDER)
 
         self.assertEqual(errors, [])
+
+    def test_cli_returns_one_for_a_missing_parent(self):
+        with patch("sys.argv", ["profilelab", str(FIXTURE_FOLDER)]):
+            self.assertEqual(main(), 1)
+
+    def test_cli_returns_zero_when_all_parents_exist(self):
+        with patch("sys.argv", ["profilelab", str(VALID_FIXTURE_FOLDER)]):
+            self.assertEqual(main(), 0)
 
         if __name__ == "__main__":
             unittest.main()

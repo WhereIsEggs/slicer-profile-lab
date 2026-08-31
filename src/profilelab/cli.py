@@ -14,19 +14,19 @@ def main():
         help="Folder containing profile JSON files.",
     )
     args = parser.parse_args()
-    
+
     errors = find_missing_parents(args.profile_folder)
-    
+
     if not errors:
         print("No missing parent profiles found.")
-        return
-    
+        return 0
+
     for error in errors:
         print(
-            f"ERROR: {error['profile']} is missing parent "
-            f"{error['missing_parent']}"
+            f"ERROR: {error['profile']} is missing parent " f"{error['missing_parent']}"
         )
-        
-        
-        if __name__ == "__main__":
-            main()
+        return 1
+
+
+if __name__ == "__main__":
+    main()
