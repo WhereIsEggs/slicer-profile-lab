@@ -17,6 +17,10 @@ def main():
     )
     args = parser.parse_args()
 
+    if not args.profile_folder.is_dir():
+        print(f"ERROR: {args.profile_folder}: folder does not exist")
+        return 1
+
     try:
         errors = find_missing_parents(args.profile_folder)
     except InvalidProfileError as error:
@@ -36,4 +40,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

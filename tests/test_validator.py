@@ -67,5 +67,18 @@ class MissingParentTests(unittest.TestCase):
             f"ERROR: {INVALID_JSON_FIXTURE_FOLDER / 'broken_process.json'}: invalid JSON"
         )
 
+    def test_cli_returns_one_for_a_missing_folder(self):
+        missing_folder = Path(__file__).parent / "fixtures" / "does_not_exist"
+
+        with (
+            patch("sys.argv", ["profilelab", str(missing_folder)]),
+            patch("builtins.print") as mock_print,
+        ):
+            self.assertEqual(main(), 1)
+
+        mock_print.assert_called_once_with(
+            f"ERROR: {missing_folder}: folder does not exist"
+        )
+
         if __name__ == "__main__":
             unittest.main()
