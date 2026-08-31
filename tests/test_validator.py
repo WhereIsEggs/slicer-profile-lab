@@ -3,13 +3,14 @@ from pathlib import Path
 
 from profilelab.validator import find_missing_parents
 
-
 FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "missing_parent"
+VALID_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "valid_parent"
+
 
 class MissingParentTests(unittest.TestCase):
     def test_reports_a_missing_parent(self):
         errors = find_missing_parents(FIXTURE_FOLDER)
-        
+
         self.assertEqual(
             errors,
             [
@@ -19,6 +20,11 @@ class MissingParentTests(unittest.TestCase):
                 }
             ],
         )
-        
+
+    def test_accepts_an_existing_parent(self):
+        errors = find_missing_parents(VALID_FIXTURE_FOLDER)
+
+        self.assertEqual(errors, [])
+
         if __name__ == "__main__":
             unittest.main()
