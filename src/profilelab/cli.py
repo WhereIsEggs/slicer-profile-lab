@@ -23,7 +23,8 @@ def main():
 
     for error in errors:
         print(
-            f"ERROR: {error['profile']} is missing parent " f"{error['missing_parent']}"
+            f"ERROR: {error['path']}: {error['profile']} is missing parent "
+            f"{error['missing_parent']}"
         )
         return 1
 
