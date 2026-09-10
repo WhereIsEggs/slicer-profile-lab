@@ -1,7 +1,10 @@
 import unittest
 from pathlib import Path
 
-from profilelab.validator import find_missing_parents
+from profilelab.validator import (
+    find_duplicate_profile_names,
+    find_missing_parents,
+)
 
 from unittest.mock import patch
 
@@ -11,6 +14,7 @@ FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "missing_parent"
 VALID_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "valid_parent"
 ROOT_PROFILE_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "root_profile"
 INVALID_JSON_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "invalid_json"
+DUPLICATE_NAMES_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "duplicate_names"
 
 
 class MissingParentTests(unittest.TestCase):
@@ -78,6 +82,36 @@ class MissingParentTests(unittest.TestCase):
 
         mock_print.assert_called_once_with(
             f"ERROR: {missing_folder}: folder does not exist"
+        )
+
+    def test_reports_duplicate_profile_names(self):
+        errors = find_duplicate_profile_names(DUPLICATE_NAMES_FIXTURE_FOLDER)
+
+        self.assertEqual(
+            errors,
+            [
+                {
+                    "profile": "0.24mm Standard @GB4 0.4 nozzle",
+                    "paths": [
+                        str(DUPLICATE_NAMES_FIXTURE_FOLDER / "base_process.json"),
+                        str(DUPLICATE_NAMES_FIXTURE_FOLDER / "copied_process.json"),
+                    ],
+                }
+            ],
+        )
+
+    def test_cli_returns_one_for_duplicate_profile_names(self):
+        with (
+            patch("sys.argv", ["profilelab", str(DUPLICATE_NAMES_FIXTURE_FOLDER)]),
+            patch("builtins.print") as mock_print,
+        ):
+            self.assertEqual(main(), 1)
+
+        mock_print.assert_called_once_with(
+            "ERROR: duplicate profile name "
+            "'0.24mm Standard @GB4 0.4 nozzle' appears in: "
+            f"{DUPLICATE_NAMES_FIXTURE_FOLDER / 'base_process.json'}, "
+            f"{DUPLICATE_NAMES_FIXTURE_FOLDER / 'copied_process.json'}"
         )
 
         if __name__ == "__main__":

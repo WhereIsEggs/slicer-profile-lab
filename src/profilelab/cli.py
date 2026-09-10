@@ -1,7 +1,10 @@
 import argparse
 from pathlib import Path
 
-from profilelab.validator import find_missing_parents
+from profilelab.validator import (
+    find_duplicate_profile_names,
+    find_missing_parents,
+)
 
 from profilelab.loader import InvalidProfileError
 
@@ -23,20 +26,29 @@ def main():
 
     try:
         errors = find_missing_parents(args.profile_folder)
+        duplicates = find_duplicate_profile_names(args.profile_folder)
     except InvalidProfileError as error:
         print(f"ERROR: {error.profile_path}: invalid JSON")
         return 1
-
-    if not errors:
-        print("No missing parent profiles found.")
+        
+    if not errors and not duplicates:
+        print("No validation problems found.")
         return 0
-
+        
     for error in errors:
         print(
             f"ERROR: {error['path']}: {error['profile']} is missing parent "
             f"{error['missing_parent']}"
         )
-        return 1
+        
+    for duplicate in duplicates:
+        paths = ", ".join(duplicate["paths"])
+        print(
+            f"ERROR: duplicate profile name "
+            f"'{duplicate['profile']}' appears in: {paths}"
+        )
+        
+    return 1
 
 
 if __name__ == "__main__":
