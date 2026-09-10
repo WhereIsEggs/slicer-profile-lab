@@ -113,6 +113,11 @@ class MissingParentTests(unittest.TestCase):
             f"{DUPLICATE_NAMES_FIXTURE_FOLDER / 'base_process.json'}, "
             f"{DUPLICATE_NAMES_FIXTURE_FOLDER / 'copied_process.json'}"
         )
+        
+    def test_accepts_unique_profile_names(self):
+        errors = find_duplicate_profile_names(VALID_FIXTURE_FOLDER)
+        
+        self.assertEqual(errors, [])
 
         if __name__ == "__main__":
             unittest.main()
