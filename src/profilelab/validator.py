@@ -51,7 +51,7 @@ def find_duplicate_profile_names(profile_folder: Path) -> list[dict[str, object]
 
             profile_paths_by_name[profile_name].append(str(profile_path))
 
-        duplicates = []
+    duplicates = []
 
     for profile_name, paths in profile_paths_by_name.items():
         if len(paths) > 1:

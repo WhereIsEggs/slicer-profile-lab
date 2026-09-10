@@ -23,6 +23,10 @@ def main():
     if not args.profile_folder.is_dir():
         print(f"ERROR: {args.profile_folder}: folder does not exist")
         return 1
+        
+    if not any(args.profile_folder.rglob("*.json")):
+        print(f"ERROR: {args.profile_folder}: no JSON profile files found")
+        return 1
 
     try:
         errors = find_missing_parents(args.profile_folder)

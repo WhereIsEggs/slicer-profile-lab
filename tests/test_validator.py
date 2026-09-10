@@ -1,6 +1,8 @@
 import unittest
 from pathlib import Path
 
+from tempfile import TemporaryDirectory
+
 from profilelab.validator import (
     find_duplicate_profile_names,
     find_missing_parents,
@@ -118,6 +120,18 @@ class MissingParentTests(unittest.TestCase):
         errors = find_duplicate_profile_names(VALID_FIXTURE_FOLDER)
         
         self.assertEqual(errors, [])
+        
+    def test_cli_returns_one_for_an_empty_folder(self):
+        with TemporaryDirectory() as empty_folder:
+            with (
+                patch("sys.argv", ["profilelab", empty_folder]),
+                patch("builtins.print") as mock_print,
+            ):
+                self.assertEqual(main(), 1)
+                
+            mock_print.assert_called_once_with(
+                f"ERROR: {empty_folder}: no JSON profile files found"
+            )
 
         if __name__ == "__main__":
             unittest.main()
