@@ -17,6 +17,9 @@ VALID_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "valid_parent"
 ROOT_PROFILE_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "root_profile"
 INVALID_JSON_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "invalid_json"
 DUPLICATE_NAMES_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "duplicate_names"
+INVALID_STRUCTURE_FIXTURE_FOLDER = (
+    Path(__file__).parent / "fixtures" / "invalid_structure"
+)
 
 
 class MissingParentTests(unittest.TestCase):
@@ -132,6 +135,21 @@ class MissingParentTests(unittest.TestCase):
             mock_print.assert_called_once_with(
                 f"ERROR: {empty_folder}: no JSON profile files found"
             )
+            
+    def test_cli_returns_one_for_a_non_object_profile(self):
+        with (
+            patch(
+                "sys.argv",
+                ["profilelab", str(INVALID_STRUCTURE_FIXTURE_FOLDER)],
+            ),
+            patch("builtins.print") as mock_print,
+        ):
+            self.assertEqual(main(), 1)
+            
+        mock_print.assert_called_once_with(
+            f"ERROR: {INVALID_STRUCTURE_FIXTURE_FOLDER / 'list_profile.json'}: "
+            "profile must be a JSON object"
+        )
 
         if __name__ == "__main__":
             unittest.main()

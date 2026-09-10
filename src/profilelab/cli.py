@@ -32,7 +32,7 @@ def main():
         errors = find_missing_parents(args.profile_folder)
         duplicates = find_duplicate_profile_names(args.profile_folder)
     except InvalidProfileError as error:
-        print(f"ERROR: {error.profile_path}: invalid JSON")
+        print(f"ERROR: {error.profile_path}: {error.reason}")
         return 1
         
     if not errors and not duplicates:
