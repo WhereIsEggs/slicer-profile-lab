@@ -23,5 +23,13 @@ def load_profile(profile_path: Path) -> dict[str, object]:
             profile_path,
             "profile must be a JSON object",
         )
+        
+    profile_name = profile.get("name")
+    
+    if not isinstance(profile_name, str) or not profile_name.strip():
+        raise InvalidProfileError(
+            profile_path,
+            "profile must have a nonempty string name",
+        )
                 
     return profile

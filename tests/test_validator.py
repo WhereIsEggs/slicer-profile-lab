@@ -20,6 +20,9 @@ DUPLICATE_NAMES_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "duplicate
 INVALID_STRUCTURE_FIXTURE_FOLDER = (
     Path(__file__).parent / "fixtures" / "invalid_structure"
 )
+MISSING_NAME_FIXTURE_FOLDER = (
+    Path(__file__).parent / "fixtures" / "missing_name"
+)
 
 
 class MissingParentTests(unittest.TestCase):
@@ -149,6 +152,18 @@ class MissingParentTests(unittest.TestCase):
         mock_print.assert_called_once_with(
             f"ERROR: {INVALID_STRUCTURE_FIXTURE_FOLDER / 'list_profile.json'}: "
             "profile must be a JSON object"
+        )
+        
+    def test_cli_returns_one_for_a_profile_without_a_name(self):
+        with (
+            patch("sys.argv", ["profilelab", str(MISSING_NAME_FIXTURE_FOLDER)]),
+            patch("builtins.print") as mock_print,
+        ):
+            self.assertEqual(main(), 1)
+            
+        mock_print.assert_called_once_with(
+            f"ERROR: {MISSING_NAME_FIXTURE_FOLDER / 'unnamed_process.json'}: "
+            "profile must have a nonempty string name"
         )
 
         if __name__ == "__main__":
