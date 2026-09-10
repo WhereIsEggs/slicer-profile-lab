@@ -1,16 +1,14 @@
 import unittest
 from pathlib import Path
-
 from tempfile import TemporaryDirectory
-
 from profilelab.validator import (
     find_duplicate_profile_names,
     find_missing_parents,
 )
-
 from unittest.mock import patch
-
 from profilelab.cli import main
+import json
+from profilelab.loader import InvalidProfileError, load_profile
 
 FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "missing_parent"
 VALID_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "valid_parent"
@@ -165,6 +163,28 @@ class MissingParentTests(unittest.TestCase):
             f"ERROR: {MISSING_NAME_FIXTURE_FOLDER / 'unnamed_process.json'}: "
             "profile must have a nonempty string name"
         )
+        
+    def test_rejects_invalid_profile_names(self):
+        for name in ("", "   ", 123):
+            with self.subTest(name=name):
+                with TemporaryDirectory() as folder:
+                    profile_path = Path(folder) / "invalid_name.json"
+                    profile_path.write_text(
+                        json.dumps({"name": name, "type": "process"}),
+                        encoding="utf-8",
+                    )
+                    
+                    with self.assertRaises(InvalidProfileError) as caught:
+                        load_profile(profile_path)
+                        
+                    self.assertEqual(
+                        caught.exception.reason,
+                        "profile must have a nonempty string name",
+                    )
+                    self.assertEqual(
+                        caught.exception.profile_path,
+                        profile_path,
+                    )
 
         if __name__ == "__main__":
             unittest.main()
