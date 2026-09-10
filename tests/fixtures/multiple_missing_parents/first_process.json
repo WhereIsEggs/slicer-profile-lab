@@ -1,0 +1,5 @@
+{
+    "name": "First Process",
+    "inherits": "Missing Base A",
+    "type": "process"
+}

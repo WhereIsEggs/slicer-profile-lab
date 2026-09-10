@@ -21,6 +21,9 @@ INVALID_STRUCTURE_FIXTURE_FOLDER = (
 MISSING_NAME_FIXTURE_FOLDER = (
     Path(__file__).parent / "fixtures" / "missing_name"
 )
+MULTIPLE_MISSING_PARENTS_FIXTURE_FOLDER = (
+    Path(__file__).parent / "fixtures" / "multiple_missing_parents"
+)
 
 
 class MissingParentTests(unittest.TestCase):
@@ -185,6 +188,30 @@ class MissingParentTests(unittest.TestCase):
                         caught.exception.profile_path,
                         profile_path,
                     )
+                    
+    def test_cli_reports_all_missing_parents(self):
+        folder = MULTIPLE_MISSING_PARENTS_FIXTURE_FOLDER
+        
+        with (
+            patch("sys.argv", ["profilelab", str(folder)]),
+            patch("builtins.print") as mock_print,
+        ):
+            self.assertEqual(main(), 1)
+            
+        messages = [
+            call.args[0]
+            for call in mock_print.call_args_list
+        ]
+        
+        self.assertCountEqual(
+            messages,
+            [
+                f"ERROR: {folder / 'first_process.json'}: "
+                "First Process is missing parent Missing Base A",
+                f"ERROR: {folder / 'second_process.json'}: "
+                "Second Process is missing parent Missing Base B",
+            ],
+        )
 
         if __name__ == "__main__":
             unittest.main()
