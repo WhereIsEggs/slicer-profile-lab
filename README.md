@@ -23,6 +23,7 @@ Example using fictional test profiles:
 - Missing, empty, whitespace-only, or non-string profile names
 - Folder paths that do not exist or are not directories
 - Folders containing no JSON files
+- Inheritance cycle detection
 
 Errors include the affected file paths where applicable.
 
@@ -50,5 +51,3 @@ not look for parents in OrcaSlicer's built-in profiles.
 
 Malformed JSON or an invalid profile structure stops validation
 at the first such file.
-
-The tool does not yet check inheritance cycles or printing settings.
