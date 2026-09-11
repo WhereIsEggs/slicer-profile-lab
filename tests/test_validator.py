@@ -293,6 +293,17 @@ class MissingParentTests(unittest.TestCase):
             cycles,
             [["Process A", "Process B", "Process A"]],
         )
+        
+    def test_cli_returns_one_for_an_inheritance_cycle(self):
+        with (
+            patch("sys.argv", ["profilelab", str(TWO_PROFILE_CYCLE_FIXTURE_FOLDER)]),
+            patch("builtins.print") as mock_print,
+        ):
+            self.assertEqual(main(), 1)
+            
+        mock_print.assert_called_once_with(
+            "ERROR: inheritance cycle: Process A -> Process B -> Process A"
+        )
 
         if __name__ == "__main__":
             unittest.main()
