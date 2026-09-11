@@ -245,6 +245,28 @@ class MissingParentTests(unittest.TestCase):
                 f"{folder_path / 'copied_process.json'}",
             ],
         )
+        
+    def test_accepts_a_parent_in_another_subfolder(self):
+        with TemporaryDirectory() as folder:
+            folder_path = Path(folder)
+            parent_folder = folder_path / "parents"
+            child_folder = folder_path / "children"
+            
+            parent_folder.mkdir()
+            child_folder.mkdir()
+            
+            copyfile(
+                VALID_FIXTURE_FOLDER / "base_process.json",
+                parent_folder / "base_process.json",
+            )
+            copyfile(
+                VALID_FIXTURE_FOLDER / "draft_process.json",
+                child_folder / "draft_process.json",
+            )
+            
+            errors = find_missing_parents(folder_path)
+            
+            self.assertEqual(errors, [])
 
         if __name__ == "__main__":
             unittest.main()
