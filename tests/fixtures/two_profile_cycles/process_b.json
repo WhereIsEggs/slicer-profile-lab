@@ -1,0 +1,5 @@
+{
+    "name": "Process B",
+    "inherits": "Process A",
+    "type": "process"
+}

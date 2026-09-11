@@ -63,3 +63,38 @@ def find_duplicate_profile_names(profile_folder: Path) -> list[dict[str, object]
             )
 
     return duplicates
+
+
+def find_inheritance_cycles(profile_folder: Path) -> list[list[str]]:
+    """Return self-inheritance cycles, reporting each cycle once."""
+    parents = {}
+    
+    for profile_path in sorted(profile_folder.rglob("*.json")):
+        profile = load_profile(profile_path)
+        parent_name = profile.get("inherits")
+        
+        if isinstance(parent_name, str):
+            parents[profile["name"]] = parent_name
+            
+    cycles = []
+    checked = set()
+    
+    for start_name in sorted(parents):
+        chain = []
+        positions = {}
+        current = start_name
+        
+        while current in parents and current not in checked:
+            if current in positions:
+                cycle_start = positions[current]
+                cycle = chain[cycle_start:] + [current]
+                cycles.append(cycle)
+                break
+            
+            positions[current] = len(chain)
+            chain.append(current)
+            current = parents[current]
+            
+        checked.update(chain)
+        
+    return cycles

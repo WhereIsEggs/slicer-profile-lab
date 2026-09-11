@@ -10,6 +10,11 @@ from profilelab.cli import main
 import json
 from profilelab.loader import InvalidProfileError, load_profile
 from shutil import copyfile
+from profilelab.validator import (
+    find_duplicate_profile_names,
+    find_inheritance_cycles,
+    find_missing_parents,
+)
 
 FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "missing_parent"
 VALID_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "valid_parent"
@@ -23,7 +28,12 @@ MISSING_NAME_FIXTURE_FOLDER = Path(__file__).parent / "fixtures" / "missing_name
 MULTIPLE_MISSING_PARENTS_FIXTURE_FOLDER = (
     Path(__file__).parent / "fixtures" / "multiple_missing_parents"
 )
-
+SELF_INHERITANCE_FIXTURE_FOLDER = (
+    Path(__file__).parent / "fixtures" / "self_inheritance"
+)
+TWO_PROFILE_CYCLE_FIXTURE_FOLDER = (
+    Path(__file__).parent / "fixtures" / "two_profile_cycles"
+)
 
 class MissingParentTests(unittest.TestCase):
     def test_reports_a_missing_parent(self):
@@ -267,6 +277,22 @@ class MissingParentTests(unittest.TestCase):
             errors = find_missing_parents(folder_path)
             
             self.assertEqual(errors, [])
+            
+    def test_reports_self_inheritance(self):
+        cycles = find_inheritance_cycles(SELF_INHERITANCE_FIXTURE_FOLDER)
+        
+        self.assertEqual(
+            cycles,
+            [["Self Process", "Self Process"]],
+        )
+        
+    def test_reports_a_two_profile_cycle_once(self):
+        cycles = find_inheritance_cycles(TWO_PROFILE_CYCLE_FIXTURE_FOLDER)
+        
+        self.assertEqual(
+            cycles,
+            [["Process A", "Process B", "Process A"]],
+        )
 
         if __name__ == "__main__":
             unittest.main()
