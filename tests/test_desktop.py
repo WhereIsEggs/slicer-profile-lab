@@ -132,3 +132,26 @@ class DesktopTests(unittest.TestCase):
             self.assertEqual(view.table.rowCount(), 0)
             self.assertEqual(view.details.toPlainText(), "")
             view.close()
+
+    def test_resolved_settings_display_and_clear_after_broken_parent(self):
+        with TemporaryDirectory() as folder:
+            view = LibraryView(root=Path(folder))
+            base = {"name": "Base", "type": "process", "vendor": "Example",
+                    "parent": "", "path": "Example/base.json", "template": True,
+                    "settings": {"name": "Base", "speed": "50"}}
+            child = {"name": "Child", "type": "process", "vendor": "Example",
+                     "parent": "Base", "path": "Example/child.json", "template": False,
+                     "settings": {"name": "Child", "inherits": "Base", "speed": "60"}}
+            broken = {"name": "Broken", "type": "process", "vendor": "Example",
+                      "parent": "Missing", "path": "Example/broken.json", "template": False,
+                      "settings": {"name": "Broken", "inherits": "Missing"}}
+            view.show_snapshot({"metadata": {"version": "2.4.2", "revision": "a" * 40,
+                                             "downloaded_at": "2026-09-11"},
+                                "profiles": [base, child, broken]})
+            view.table.selectRow(1)
+            self.assertEqual(view.settings_table.item(0, 1).text(), "60")
+            self.assertEqual(view.settings_table.item(0, 2).text(), "Overridden here")
+            view.table.selectRow(2)
+            self.assertEqual(view.settings_table.rowCount(), 0)
+            self.assertIn("Cannot resolve", view.resolution_status.text())
+            view.close()

@@ -4,10 +4,11 @@ from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QTextEdit,
-    QVBoxLayout, QWidget,
+    QVBoxLayout, QWidget, QTabWidget,
 )
 
 from profilelab.library import VERSION, install_snapshot, library_home, read_snapshot, search_profiles
+from profilelab.resolver import ProfileResolver, ResolutionError
 
 TYPE_LABELS = {"machine": "Printer", "machine_model": "Printer model", "filament": "Filament", "process": "Process"}
 
@@ -35,13 +36,14 @@ class LibraryView(QWidget):
         self.worker = None
         self.profiles = []
         self.matches = []
+        self.resolver = ProfileResolver([])
+        self.resolved = {}
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
         title = QLabel("System profile library")
         title.setStyleSheet("font-size: 24px; font-weight: 600;")
         layout.addWidget(title)
-        note = QLabel("Official OrcaSlicer 2.4.2 profiles. Browse source settings locally; "
-                      "inherited values are not yet expanded. Your installed OrcaSlicer profiles stay unchanged.")
+        note = QLabel("Official OrcaSlicer 2.4.2 profiles. Select a profile to see its own and inherited values.")
         note.setWordWrap(True)
         layout.addWidget(note)
         self.status = QLabel("No library downloaded yet.")
@@ -72,10 +74,27 @@ class LibraryView(QWidget):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.itemSelectionChanged.connect(self.show_selected)
         layout.addWidget(self.table, 2)
+        detail_tabs = QTabWidget()
+        effective = QWidget()
+        effective_layout = QVBoxLayout(effective)
+        self.resolution_status = QLabel("Values from profile files only; OrcaSlicer's internal defaults are not included.")
+        self.resolution_status.setWordWrap(True)
+        effective_layout.addWidget(self.resolution_status)
+        self.setting_search = QLineEdit()
+        self.setting_search.setPlaceholderText("Find a setting…")
+        self.setting_search.textChanged.connect(self.filter_settings)
+        effective_layout.addWidget(self.setting_search)
+        self.settings_table = QTableWidget(0, 4)
+        self.settings_table.setHorizontalHeaderLabels(["Setting", "Value", "Origin", "Source profile"])
+        self.settings_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.settings_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        effective_layout.addWidget(self.settings_table)
+        detail_tabs.addTab(effective, "Resolved settings")
         self.details = QTextEdit()
         self.details.setReadOnly(True)
         self.details.setPlaceholderText("Select a profile to inspect its stored settings.")
-        layout.addWidget(self.details, 1)
+        detail_tabs.addTab(self.details, "Source JSON")
+        layout.addWidget(detail_tabs, 2)
         attribution = QLabel('Source: <a href="https://github.com/OrcaSlicer/OrcaSlicer/tree/v2.4.2/resources/profiles">'
                              'OrcaSlicer public profiles</a> · AGPL-3.0 · Offline after download')
         attribution.setOpenExternalLinks(True)
@@ -105,6 +124,7 @@ class LibraryView(QWidget):
 
     def show_snapshot(self, snapshot):
         self.profiles = snapshot["profiles"]
+        self.resolver = ProfileResolver(self.profiles)
         metadata = snapshot["metadata"]
         self.status.setText(f"OrcaSlicer {metadata['version']} · Revision {metadata['revision'][:12]} · "
                             f"Downloaded {metadata['downloaded_at'][:10]}")
@@ -116,6 +136,9 @@ class LibraryView(QWidget):
         self.matches = search_profiles(self.profiles, self.search.text(), self.kind.currentData())
         self.table.setRowCount(0)
         self.details.clear()
+        self.resolved = {}
+        self.filter_settings()
+        self.resolution_status.setText("Select a profile to see its resolved settings.")
         self.table.setRowCount(len(self.matches))
         for row, profile in enumerate(self.matches):
             for column, text in enumerate((profile["name"], TYPE_LABELS[profile["type"]],
@@ -132,3 +155,28 @@ class LibraryView(QWidget):
         category = "Base template / model" if profile["template"] else "Selectable preset"
         self.details.setPlainText(f"{category}\nSource file: {profile['path']}\n\n"
                                  + json.dumps(profile["settings"], indent=2, ensure_ascii=False))
+        self.resolved = {}
+        try:
+            self.resolved = self.resolver.resolve(profile)
+            self.resolution_status.setText(
+                f"{len(self.resolved)} settings from the profile chain. "
+                "OrcaSlicer's internal defaults are not included."
+            )
+        except ResolutionError as error:
+            self.resolution_status.setText(f"Cannot resolve this profile: {error}")
+        self.filter_settings()
+
+    def filter_settings(self):
+        import json
+        query = self.setting_search.text().casefold().strip()
+        matches = [(key, setting) for key, setting in sorted(self.resolved.items())
+                   if query in key.replace("_", " ").casefold() or query in key.casefold()]
+        self.settings_table.setRowCount(0)
+        self.settings_table.setRowCount(len(matches))
+        for row, (key, setting) in enumerate(matches):
+            value = setting.value if isinstance(setting.value, str) else json.dumps(setting.value, ensure_ascii=False)
+            source = f"{setting.source_name} ({setting.source_vendor})"
+            for column, text in enumerate((key.replace("_", " ").capitalize(), value, setting.status, source)):
+                item = QTableWidgetItem(text)
+                item.setToolTip(key if column == 0 else (setting.source_path if column == 3 else text))
+                self.settings_table.setItem(row, column, item)

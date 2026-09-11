@@ -48,10 +48,16 @@ The source URL, revision, download date, and integrity hashes are recorded besid
 Downloads are staged before publication; an incomplete download is never activated.
 
 Search by name, vendor, or parent and filter by profile type. The preview displays
-stored source settings, not resolved inherited values. Vendor manifests are excluded
+stored source settings and a read-only **Resolved settings** table. The table
+combines explicitly stored values along the parent chain and identifies inherited,
+overridden, locally defined, and same-as-parent values with their source profile.
+It does not include OrcaSlicer's internal application defaults or normalize values.
+Parent lookup uses vendor and profile type, with shared OrcaFilamentLibrary fallback
+for filaments. Missing or ambiguous parents and cycles prevent displaying a partial
+result. Source JSON remains available in a separate tab. Vendor manifests are excluded
 from the profile list, and base templates remain available for inspection. This
 library is separate from OrcaSlicer's installed `.opc` files and may differ from
-installed profile updates. It does not yet resolve dependencies, certify import
+installed profile updates. It does not yet certify import
 compatibility, generate profiles, check for newer releases, or offer rollback controls.
 Public upstream profiles are attributed to OrcaSlicer (AGPL-3.0); see the source
 and license link recorded in `source.json`.
