@@ -35,6 +35,7 @@ TWO_PROFILE_CYCLE_FIXTURE_FOLDER = (
     Path(__file__).parent / "fixtures" / "two_profile_cycles"
 )
 
+
 class MissingParentTests(unittest.TestCase):
     def test_reports_a_missing_parent(self):
         errors = find_missing_parents(FIXTURE_FOLDER)
@@ -255,16 +256,16 @@ class MissingParentTests(unittest.TestCase):
                 f"{folder_path / 'copied_process.json'}",
             ],
         )
-        
+
     def test_accepts_a_parent_in_another_subfolder(self):
         with TemporaryDirectory() as folder:
             folder_path = Path(folder)
             parent_folder = folder_path / "parents"
             child_folder = folder_path / "children"
-            
+
             parent_folder.mkdir()
             child_folder.mkdir()
-            
+
             copyfile(
                 VALID_FIXTURE_FOLDER / "base_process.json",
                 parent_folder / "base_process.json",
@@ -273,46 +274,67 @@ class MissingParentTests(unittest.TestCase):
                 VALID_FIXTURE_FOLDER / "draft_process.json",
                 child_folder / "draft_process.json",
             )
-            
+
             errors = find_missing_parents(folder_path)
-            
+
             self.assertEqual(errors, [])
-            
+
     def test_reports_self_inheritance(self):
         cycles = find_inheritance_cycles(SELF_INHERITANCE_FIXTURE_FOLDER)
-        
+
         self.assertEqual(
             cycles,
             [["Self Process", "Self Process"]],
         )
-        
+
     def test_reports_a_two_profile_cycle_once(self):
         cycles = find_inheritance_cycles(TWO_PROFILE_CYCLE_FIXTURE_FOLDER)
-        
+
         self.assertEqual(
             cycles,
             [["Process A", "Process B", "Process A"]],
         )
-        
+
     def test_cli_returns_one_for_an_inheritance_cycle(self):
         with (
             patch("sys.argv", ["profilelab", str(TWO_PROFILE_CYCLE_FIXTURE_FOLDER)]),
             patch("builtins.print") as mock_print,
         ):
             self.assertEqual(main(), 1)
-            
+
         mock_print.assert_called_once_with(
             "ERROR: inheritance cycle: Process A -> Process B -> Process A"
         )
-        
+
     def test_accepts_an_inheritance_chain_without_a_cycle(self):
         with TemporaryDirectory() as folder:
             folder_path = Path(folder)
-            
+
             profiles = [
                 {"name": "Process A", "inherits": "Process B", "type": "process"},
                 {"name": "Process B", "inherits": "Process C", "type": "process"},
                 {"name": "Process C", "type": "process"},
+            ]
+
+            for index, profile in enumerate(profiles):
+                profile_path = folder_path / f"process_{index}.json"
+                profile_path.write_text(
+                    json.dumps(profile),
+                    encoding="utf-8",
+                )
+
+            cycles = find_inheritance_cycles(folder_path)
+
+            self.assertEqual(cycles, [])
+
+    def test_reports_only_the_cycle_when_a_chain_leads_into_it(self):
+        with TemporaryDirectory() as folder:
+            folder_path = Path(folder)
+
+            profiles = [
+                {"name": "Process A", "inherits": "Process B", "type": "process"},
+                {"name": "Process B", "inherits": "Process C", "type": "process"},
+                {"name": "Process C", "inherits": "Process B", "type": "process"},
             ]
             
             for index, profile in enumerate(profiles):
@@ -321,10 +343,13 @@ class MissingParentTests(unittest.TestCase):
                     json.dumps(profile),
                     encoding="utf-8",
                 )
-                
-            cycles = find_inheritance_cycles(folder_path)
             
-            self.assertEqual(cycles, [])
-
+            cycles = find_inheritance_cycles(folder_path)
+        
+            self.assertEqual(
+                cycles,
+                [["Process B", "Process C", "Process B"]],
+            )
+            
         if __name__ == "__main__":
             unittest.main()
