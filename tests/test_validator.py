@@ -304,6 +304,27 @@ class MissingParentTests(unittest.TestCase):
         mock_print.assert_called_once_with(
             "ERROR: inheritance cycle: Process A -> Process B -> Process A"
         )
+        
+    def test_accepts_an_inheritance_chain_without_a_cycle(self):
+        with TemporaryDirectory() as folder:
+            folder_path = Path(folder)
+            
+            profiles = [
+                {"name": "Process A", "inherits": "Process B", "type": "process"},
+                {"name": "Process B", "inherits": "Process C", "type": "process"},
+                {"name": "Process C", "type": "process"},
+            ]
+            
+            for index, profile in enumerate(profiles):
+                profile_path = folder_path / f"process_{index}.json"
+                profile_path.write_text(
+                    json.dumps(profile),
+                    encoding="utf-8",
+                )
+                
+            cycles = find_inheritance_cycles(folder_path)
+            
+            self.assertEqual(cycles, [])
 
         if __name__ == "__main__":
             unittest.main()
