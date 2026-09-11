@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from profilelab.orca_status import OrcaStatus, get_orca_status
 from profilelab.validation import validate_folder
 from profilelab.library_view import LibraryView
+from profilelab.drafts_view import DraftsView
 
 
 def folder_picker_start(current_folder: str) -> str:
@@ -107,8 +108,15 @@ class MainWindow(QMainWindow):
         tabs.addTab(body, "Check profiles")
         self.library = LibraryView(self)
         tabs.addTab(self.library, "System library")
+        self.drafts = DraftsView(self)
+        tabs.addTab(self.drafts, "My drafts")
+        self.library.draft_created.connect(self.open_draft)
         self.setCentralWidget(tabs)
         self.refresh_status()
+
+    def open_draft(self, draft):
+        self.drafts.refresh(draft["id"])
+        self.centralWidget().setCurrentWidget(self.drafts)
 
     def clear_results(self):
         self.results.clear()

@@ -1,16 +1,57 @@
 """Searchable system library; no editing of source presets."""
 
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QThread, Signal, Qt
+from PySide6.QtGui import QPainter, QPalette, QPen
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QTextEdit,
-    QVBoxLayout, QWidget, QTabWidget,
+    QVBoxLayout, QWidget, QTabWidget, QSplitter, QSplitterHandle, QInputDialog, QMessageBox,
 )
 
 from profilelab.library import VERSION, install_snapshot, library_home, read_snapshot, search_profiles
 from profilelab.resolver import ProfileResolver, ResolutionError
+from profilelab.drafts import create_draft, drafts_home
+from profilelab.setting_editor import display_value
 
 TYPE_LABELS = {"machine": "Printer", "machine_model": "Printer model", "filament": "Filament", "process": "Process"}
+
+
+class GripHandle(QSplitterHandle):
+    """A familiar three-line grab marker that keeps Qt's resize behavior."""
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        palette = self.palette()
+        hovered = self.underMouse()
+        painter.fillRect(self.rect(), palette.color(
+            QPalette.ColorRole.Mid if hovered else QPalette.ColorRole.Window
+        ))
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pen = QPen(palette.color(
+            QPalette.ColorRole.Highlight if hovered else QPalette.ColorRole.WindowText
+        ), 1)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        painter.setPen(pen)
+        center = self.rect().center()
+        for offset in (-2, 0, 2):
+            painter.drawLine(center.x() - 6, center.y() + offset,
+                             center.x() + 6, center.y() + offset)
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self.update()
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self.update()
+
+
+class ProfileSplitter(QSplitter):
+    def createHandle(self):
+        handle = GripHandle(self.orientation(), self)
+        handle.setCursor(Qt.CursorShape.SplitVCursor)
+        handle.setToolTip("Drag up or down to resize the profile list and settings")
+        return handle
 
 
 class LibraryWorker(QThread):
@@ -30,7 +71,9 @@ class LibraryWorker(QThread):
 
 
 class LibraryView(QWidget):
-    def __init__(self, parent=None, root=None):
+    draft_created = Signal(object)
+
+    def __init__(self, parent=None, root=None, draft_root=None):
         super().__init__(parent)
         self.root = root if root is not None else library_home()
         self.worker = None
@@ -38,6 +81,8 @@ class LibraryView(QWidget):
         self.matches = []
         self.resolver = ProfileResolver([])
         self.resolved = {}
+        self.metadata = {}
+        self.draft_root = draft_root if draft_root is not None else drafts_home()
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
         title = QLabel("System profile library")
@@ -66,6 +111,10 @@ class LibraryView(QWidget):
         layout.addLayout(row)
         self.count = QLabel("0 profiles")
         layout.addWidget(self.count)
+        self.create_button = QPushButton("Create draft from selected profile…")
+        self.create_button.setEnabled(False)
+        self.create_button.clicked.connect(self.make_draft)
+        layout.addWidget(self.create_button)
         self.table = QTableWidget(0, 4)
         self.table.setHorizontalHeaderLabels(["Profile", "Type", "Vendor", "Parent"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -73,7 +122,10 @@ class LibraryView(QWidget):
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.itemSelectionChanged.connect(self.show_selected)
-        layout.addWidget(self.table, 2)
+        self.panel_splitter = ProfileSplitter(Qt.Orientation.Vertical)
+        self.panel_splitter.setChildrenCollapsible(False)
+        self.panel_splitter.setHandleWidth(11)
+        self.panel_splitter.addWidget(self.table)
         detail_tabs = QTabWidget()
         effective = QWidget()
         effective_layout = QVBoxLayout(effective)
@@ -94,7 +146,13 @@ class LibraryView(QWidget):
         self.details.setReadOnly(True)
         self.details.setPlaceholderText("Select a profile to inspect its stored settings.")
         detail_tabs.addTab(self.details, "Source JSON")
-        layout.addWidget(detail_tabs, 2)
+        self.panel_splitter.addWidget(detail_tabs)
+        self.panel_splitter.setSizes([300, 300])
+        self.panel_splitter.setStretchFactor(0, 1)
+        self.panel_splitter.setStretchFactor(1, 1)
+        self.panel_splitter.handle(1).setToolTip("Drag up or down to resize the profile list and settings")
+        self.panel_splitter.handle(1).setCursor(Qt.CursorShape.SplitVCursor)
+        layout.addWidget(self.panel_splitter, 1)
         attribution = QLabel('Source: <a href="https://github.com/OrcaSlicer/OrcaSlicer/tree/v2.4.2/resources/profiles">'
                              'OrcaSlicer public profiles</a> · AGPL-3.0 · Offline after download')
         attribution.setOpenExternalLinks(True)
@@ -126,6 +184,7 @@ class LibraryView(QWidget):
         self.profiles = snapshot["profiles"]
         self.resolver = ProfileResolver(self.profiles)
         metadata = snapshot["metadata"]
+        self.metadata = metadata
         self.status.setText(f"OrcaSlicer {metadata['version']} · Revision {metadata['revision'][:12]} · "
                             f"Downloaded {metadata['downloaded_at'][:10]}")
         self.download.setText("Library available offline")
@@ -133,6 +192,7 @@ class LibraryView(QWidget):
         self.filter_profiles()
 
     def filter_profiles(self):
+        self.create_button.setEnabled(False)
         self.matches = search_profiles(self.profiles, self.search.text(), self.kind.currentData())
         self.table.setRowCount(0)
         self.details.clear()
@@ -147,6 +207,7 @@ class LibraryView(QWidget):
         self.count.setText(f"{len(self.matches):,} of {len(self.profiles):,} profiles")
 
     def show_selected(self):
+        self.create_button.setEnabled(False)
         row = self.table.currentRow()
         if not 0 <= row < len(self.matches):
             return
@@ -158,6 +219,7 @@ class LibraryView(QWidget):
         self.resolved = {}
         try:
             self.resolved = self.resolver.resolve(profile)
+            self.create_button.setEnabled(profile["type"] in {"machine", "filament", "process"})
             self.resolution_status.setText(
                 f"{len(self.resolved)} settings from the profile chain. "
                 "OrcaSlicer's internal defaults are not included."
@@ -165,6 +227,23 @@ class LibraryView(QWidget):
         except ResolutionError as error:
             self.resolution_status.setText(f"Cannot resolve this profile: {error}")
         self.filter_settings()
+
+    def make_draft(self):
+        row = self.table.currentRow()
+        if not self.create_button.isEnabled() or not 0 <= row < len(self.matches):
+            return
+        profile = self.matches[row]
+        name, accepted = QInputDialog.getText(
+            self, "Create profile draft", "Name your new draft:", text=f"{profile['name']} - Custom"
+        )
+        if not accepted:
+            return
+        try:
+            draft = create_draft(self.draft_root, name, profile, self.metadata, self.resolver)
+        except (OSError, ValueError) as error:
+            QMessageBox.warning(self, "Draft could not be saved", str(error))
+            return
+        self.draft_created.emit(draft)
 
     def filter_settings(self):
         import json
@@ -174,7 +253,7 @@ class LibraryView(QWidget):
         self.settings_table.setRowCount(0)
         self.settings_table.setRowCount(len(matches))
         for row, (key, setting) in enumerate(matches):
-            value = setting.value if isinstance(setting.value, str) else json.dumps(setting.value, ensure_ascii=False)
+            value = display_value(setting.value, key)
             source = f"{setting.source_name} ({setting.source_vendor})"
             for column, text in enumerate((key.replace("_", " ").capitalize(), value, setting.status, source)):
                 item = QTableWidgetItem(text)

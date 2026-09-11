@@ -20,8 +20,9 @@ Once a folder is selected,
 the picker starts there. Custom or portable locations can be selected manually.
 Opening the picker does not scan profiles. Choose a profile folder rather than
 the entire configuration directory, which can contain unrelated JSON files.
-This first desktop version reads profiles only; it does not yet create, edit,
-export, or install profiles. It reports OrcaSlicer process status, but read-only
+The desktop can read profiles and create separate application drafts; it does not
+yet export or install profiles. Draft values can be edited as described below.
+It reports OrcaSlicer process status, but read-only
 checks remain available while OrcaSlicer is open.
 
 Future installation actions must recheck that OrcaSlicer is closed immediately
@@ -30,12 +31,9 @@ is a snapshot, not a lock preventing OrcaSlicer from starting afterward.
 The planned profile builder targets OrcaSlicer 2.4.2 and will follow its settings
 organization; this preview does not yet certify 2.4.2 import compatibility.
 
-The planned builder will offer separate **System profile** and **User profile**
-starting points, with source-specific folder selection. System locations must
-be detected from the installation; user profiles default to the location above,
-with manual selection for cloud account or custom locations. Building from a
-profile will create a new draft without modifying the source. This builder
-workflow is not implemented in the current validation preview.
+Draft creation currently starts from the public **System library**. A future
+**User profile** starting point will use the user location above, with manual
+selection for cloud account or custom locations. Source profiles are preserved.
 
 ## System library preview
 
@@ -61,6 +59,24 @@ installed profile updates. It does not yet certify import
 compatibility, generate profiles, check for newer releases, or offer rollback controls.
 Public upstream profiles are attributed to OrcaSlicer (AGPL-3.0); see the source
 and license link recorded in `source.json`.
+
+## Draft workspace
+
+Select a printer variant, filament, or process in **System library**, then click
+**Create draft from selected profile** and enter a new name. The app opens the
+saved draft under **My drafts**. Drafts live in
+`%LOCALAPPDATA%\SlicerProfileLab\drafts`, separately from OrcaSlicer profiles.
+Each draft stores its source revision, base profile, resolved starting values,
+and a separate (initially empty) overrides dictionary. Names are never used as
+filesystem paths. Drafts reopen offline and retain their starting values if the
+system library changes. These are application workspace files, not importable
+OrcaSlicer exports. Click a value under **My drafts** to edit it. Lists display
+without JSON syntax and edit as individual fields; text, numbers, native booleans,
+and multiline G-code retain their stored types. Changes save as overrides, appear
+in bold, and can be reset to their starting values. Setting names are read-only.
+Structured values and empty lists require future specialized editors. Numeric
+strings remain text fields: exact OrcaSlicer enums, units, limits, and semantic
+validation are not yet implemented. Export and installation remain unavailable.
 
 ## Command-line usage
 

@@ -12,6 +12,9 @@ try:
     from PySide6.QtWidgets import QApplication
     from profilelab.desktop import MainWindow, folder_picker_start
     from profilelab.library_view import LibraryView
+    from profilelab.drafts_view import DraftsView
+    from profilelab.setting_editor import SettingDialog, display_value
+    from PySide6.QtCore import Qt
     from profilelab.orca_status import OrcaStatus, get_orca_status, require_orca_closed
     DESKTOP_AVAILABLE = True
 except ImportError:
@@ -48,6 +51,55 @@ class DesktopTests(unittest.TestCase):
     def test_background_check_displays_valid_result(self):
         self.run_check("valid_parent")
         self.assertIn("No problems found", self.window.summary.text())
+
+    def test_list_editor_keeps_text_types_and_plain_display(self):
+        dialog = SettingDialog("Flow", "flow", ["70%", "70%"])
+        self.assertEqual(display_value(["70%", "70%"]), "70% · 70%")
+        dialog.editors[0].setText("80%")
+        dialog.accept_values()
+        self.assertEqual(dialog.value, ["80%", "70%"])
+        dialog.close()
+
+    def test_draft_keys_are_read_only_and_click_edit_saves(self):
+        from profilelab.drafts import create_draft, load_drafts
+        from profilelab.resolver import ProfileResolver
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            profile = {"name": "Base", "type": "process", "vendor": "Example",
+                       "path": "Example/base.json", "settings": {"flow": ["70%", "70%"]}}
+            create_draft(root, "Custom", profile, {"version": "2.4.2", "revision": "a" * 40}, ProfileResolver([profile]))
+            view = DraftsView(root=root)
+            view.list.setCurrentRow(0)
+            self.assertFalse(view.values.item(0, 0).flags() & Qt.ItemFlag.ItemIsEditable)
+            with patch("profilelab.drafts_view.SettingDialog") as editor:
+                editor.return_value.exec.return_value = 1
+                editor.return_value.value = ["80%", "70%"]
+                view.edit_value(0, 0)
+                editor.assert_not_called()
+                view.edit_value(0, 1)
+            self.assertEqual(load_drafts(root)[0][0]["overrides"]["flow"], ["80%", "70%"])
+            self.assertTrue(view.values.item(0, 1).font().bold())
+            view.close()
+
+    def test_create_and_reopen_draft_from_library(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            library = LibraryView(root=root / "library", draft_root=root / "drafts")
+            library.show_snapshot({"metadata": {"version": "2.4.2", "revision": "a" * 40,
+                                                 "downloaded_at": "2026-09-11"},
+                "profiles": [{"name": "Base", "type": "process", "vendor": "Example",
+                              "parent": "", "path": "Example/process/base.json", "template": False,
+                              "settings": {"name": "Base", "speed": "50"}}]})
+            library.table.selectRow(0)
+            self.assertTrue(library.create_button.isEnabled())
+            with patch("profilelab.library_view.QInputDialog.getText", return_value=("My process", True)):
+                library.make_draft()
+            drafts = DraftsView(root=root / "drafts")
+            drafts.list.setCurrentRow(0)
+            self.assertEqual(drafts.drafts[0]["name"], "My process")
+            self.assertEqual(drafts.values.item(0, 1).text(), "50")
+            library.close()
+            drafts.close()
 
     def test_picker_starts_at_orca_folder_and_preserves_selection(self):
         with TemporaryDirectory() as folder:
