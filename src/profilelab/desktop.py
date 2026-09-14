@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 
 from profilelab.orca_status import OrcaStatus, get_orca_status
 from profilelab.validation import validate_folder
+from profilelab.engine_validator import run_orca_engine
 from profilelab.library_view import LibraryView
 from profilelab.drafts_view import DraftsView
 
@@ -43,7 +44,9 @@ class ValidationWorker(QThread):
 
     def run(self):
         try:
-            self.result_ready.emit(validate_folder(self.folder))
+            report = validate_folder(self.folder)
+            engine_result = run_orca_engine(self.folder)
+            self.result_ready.emit((report, engine_result))
         except (OSError, UnicodeError) as error:
             self.failed.emit(f"Could not read the profiles: {error}")
         except Exception as error:
@@ -146,19 +149,29 @@ class MainWindow(QMainWindow):
         self.browse.setEnabled(False)
         self.check.setEnabled(False)
         self.results.clear()
-        self.summary.setText("Checking profiles…")
+        self.summary.setText("Checking profiles with Profile Lab and OrcaSlicer…")
         self.worker = ValidationWorker(folder, self)
         self.worker.result_ready.connect(self.show_report)
         self.worker.failed.connect(self.show_failure)
         self.worker.finished.connect(self.finish_validation)
         self.worker.start()
 
-    def show_report(self, report):
-        if report.is_valid:
-            self.summary.setText("No problems found in the current checks.")
+    def show_report(self, result):
+        report, engine = result
+        messages = [issue.message for issue in report.issues]
+        if engine.status == "passed":
+            messages.append(engine.message)
         else:
-            self.summary.setText(f"{len(report.issues)} issue(s) found")
-        self.results.setPlainText("\n\n".join(issue.message for issue in report.issues))
+            messages.append(engine.message)
+            if engine.details:
+                messages.append("Details from OrcaSlicer:\n" + engine.details)
+        if report.is_valid and engine.status == "passed":
+            self.summary.setText("Ready to use: built-in and Orca engine checks passed.")
+        elif report.is_valid:
+            self.summary.setText("Built-in checks passed. See Orca engine status below.")
+        else:
+            self.summary.setText(f"{len(report.issues)} built-in issue(s) found. See results below.")
+        self.results.setPlainText("\n\n".join(messages))
 
     def show_failure(self, message):
         self.summary.setText("Check could not finish")

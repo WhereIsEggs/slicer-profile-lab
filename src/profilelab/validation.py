@@ -4,10 +4,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from profilelab.loader import InvalidProfileError
+from profilelab.engine_validator import is_complete_profile_tree
+from profilelab.system_checks import find_profile_reference_issues, find_setting_id_issues
 from profilelab.validator import (
     find_duplicate_profile_names,
     find_inheritance_cycles,
     find_missing_parents,
+    profile_paths,
 )
 
 
@@ -34,7 +37,7 @@ def validate_folder(profile_folder: Path) -> ValidationReport:
             "folder", f"{profile_folder}: folder does not exist", [profile_folder]
         )])
 
-    if not any(profile_folder.rglob("*.json")):
+    if not profile_paths(profile_folder):
         return ValidationReport([ValidationIssue(
             "folder", f"{profile_folder}: no JSON profile files found", [profile_folder]
         )])
@@ -70,5 +73,15 @@ def validate_folder(profile_folder: Path) -> ValidationReport:
         issues.append(ValidationIssue(
             "inheritance_cycle", f"inheritance cycle: {' -> '.join(cycle)}"
         ))
+
+    if is_complete_profile_tree(profile_folder):
+        for issue in find_setting_id_issues(profile_folder):
+            issues.append(ValidationIssue(
+                "setting_id", f"{issue['path']}: {issue['message']}", [issue["path"]]
+            ))
+        for issue in find_profile_reference_issues(profile_folder):
+            issues.append(ValidationIssue(
+                "system_profile", f"{issue['path']}: {issue['message']}", [issue["path"]]
+            ))
 
     return ValidationReport(issues)

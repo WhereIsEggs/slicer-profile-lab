@@ -48,9 +48,10 @@ class DesktopTests(unittest.TestCase):
         self.assertIsNone(self.window.worker)
         self.assertTrue(self.window.check.isEnabled())
 
-    def test_background_check_displays_valid_result(self):
+    def test_background_check_reports_when_engine_needs_a_complete_tree(self):
         self.run_check("valid_parent")
-        self.assertIn("No problems found", self.window.summary.text())
+        self.assertIn("Built-in checks passed", self.window.summary.text())
+        self.assertIn("complete system profile library", self.window.results.toPlainText())
 
     def test_list_editor_keeps_text_types_and_plain_display(self):
         dialog = SettingDialog("Flow", "flow", ["70%", "70%"])

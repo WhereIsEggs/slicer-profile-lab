@@ -2,11 +2,19 @@ from pathlib import Path
 from profilelab.loader import load_profile
 
 
+def profile_paths(profile_folder: Path):
+    """JSON presets, excluding root vendor catalog files in a full Orca tree."""
+    return sorted(
+        path for path in profile_folder.rglob("*.json")
+        if not (path.parent == profile_folder and (profile_folder / path.stem).is_dir())
+    )
+
+
 def find_missing_parents(profile_folder: Path) -> list[dict[str, str]]:
     """Return profiles that inherir from a parent not found in the folder."""
     profiles = []
 
-    for profile_path in profile_folder.rglob("*.json"):
+    for profile_path in profile_paths(profile_folder):
         profiles.append((profile_path, load_profile(profile_path)))
 
     known_profile_names = {
@@ -41,7 +49,7 @@ def find_duplicate_profile_names(profile_folder: Path) -> list[dict[str, object]
     """Return profile names that appear in more than one JSON file."""
     profile_paths_by_name: dict[str, list[str]] = {}
 
-    for profile_path in sorted(profile_folder.rglob("*.json")):
+    for profile_path in profile_paths(profile_folder):
         profile = load_profile(profile_path)
         profile_name = profile.get("name")
 
@@ -69,7 +77,7 @@ def find_inheritance_cycles(profile_folder: Path) -> list[list[str]]:
     """Return self-inheritance cycles, reporting each cycle once."""
     parents = {}
     
-    for profile_path in sorted(profile_folder.rglob("*.json")):
+    for profile_path in profile_paths(profile_folder):
         profile = load_profile(profile_path)
         parent_name = profile.get("inherits")
         
