@@ -37,6 +37,17 @@ TWO_PROFILE_CYCLE_FIXTURE_FOLDER = (
 
 
 class MissingParentTests(unittest.TestCase):
+    def test_accepts_explicit_empty_parent_for_all_profile_types(self):
+        with TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            for kind in ("machine", "filament", "process"):
+                (folder / f"{kind}.json").write_text(json.dumps({
+                    "name": f"Root {kind}", "type": kind, "inherits": ""
+                }), encoding="utf-8")
+            self.assertEqual(find_missing_parents(folder), [])
+            with patch("sys.argv", ["profilelab", str(folder)]), patch("builtins.print"):
+                self.assertEqual(main(), 0)
+
     def test_reports_a_missing_parent(self):
         errors = find_missing_parents(FIXTURE_FOLDER)
 

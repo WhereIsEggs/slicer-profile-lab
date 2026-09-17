@@ -45,7 +45,8 @@ class ProfileResolver:
             raise ResolutionError(f"Parent '{parent}' is ambiguous within {matches[0]['vendor']}.")
         return matches[0]
 
-    def resolve(self, selected):
+    def chain(self, selected):
+        """Return selected-to-root records without losing identity metadata."""
         chain = []
         visited = set()
         current = selected
@@ -56,7 +57,10 @@ class ProfileResolver:
             visited.add(key)
             chain.append(current)
             current = self.parent_of(current)
+        return chain
 
+    def resolve(self, selected):
+        chain = self.chain(selected)
         settings = {}
         for profile in reversed(chain):
             for key, value in profile["settings"].items():

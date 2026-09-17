@@ -11,7 +11,7 @@ def profile_paths(profile_folder: Path):
 
 
 def find_missing_parents(profile_folder: Path) -> list[dict[str, str]]:
-    """Return profiles that inherir from a parent not found in the folder."""
+    """Return profiles that inherit from a named parent not found in the folder."""
     profiles = []
 
     for profile_path in profile_paths(profile_folder):
@@ -32,6 +32,7 @@ def find_missing_parents(profile_folder: Path) -> list[dict[str, str]]:
         if (
             isinstance(profile_name, str)
             and isinstance(parent_name, str)
+            and parent_name != ""
             and parent_name not in known_profile_names
         ):
             missing_parents.append(

@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from profilelab.library import (
-    REVISION, catalog_from_archive, install_snapshot, read_snapshot,
+    REVISION, catalog_from_archive, install_snapshot, install_validation_resources, read_snapshot,
     search_profiles, snapshot_path,
 )
 
@@ -66,3 +66,21 @@ class LibraryTests(unittest.TestCase):
                     install_snapshot(root)
             self.assertIsNone(read_snapshot(root))
             self.assertEqual(list(root.iterdir()), [])
+
+    def test_validation_resources_are_cached_separately_and_reused(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder) / "library"
+            archive = Path(folder) / "source.zip"
+            self.make_archive(archive, {
+                "Vendor.json": {"process_list": [{"sub_path": "process/base.json"}]},
+                "Vendor/process/base.json": {"name": "Base", "type": "process"},
+            })
+            with zipfile.ZipFile(archive, "a") as zipped:
+                zipped.writestr(f"OrcaSlicer-{REVISION}/resources/info/nozzle_info.json", "{}")
+            with patch("profilelab.library.urllib.request.urlopen", side_effect=lambda *args, **kwargs: archive.open("rb")):
+                install_snapshot(root)
+                resources = install_validation_resources(root)
+            self.assertTrue((resources / "profiles" / "Vendor.json").is_file())
+            self.assertTrue((resources / "info" / "nozzle_info.json").is_file())
+            with patch("profilelab.library.urllib.request.urlopen", side_effect=AssertionError("Network not allowed")):
+                self.assertEqual(install_validation_resources(root), resources)

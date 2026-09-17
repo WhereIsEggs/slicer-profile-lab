@@ -17,6 +17,27 @@ MAX_DOWNLOAD = 1024 * 1024 * 1024
 MAX_JSON = 8 * 1024 * 1024
 
 
+def check_library_updates():
+    """Check official stable releases without replacing a pinned snapshot."""
+    request = urllib.request.Request(
+        'https://api.github.com/repos/OrcaSlicer/OrcaSlicer/releases/latest',
+        headers={'User-Agent': 'SlicerProfileLab/0.1', 'Accept': 'application/vnd.github+json'},
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        release = json.loads(response.read(1024 * 1024))
+    import re
+    tag = release.get('tag_name', '')
+    match = re.fullmatch(r'v?(\d+)\.(\d+)\.(\d+)', tag)
+    if not match or release.get('prerelease') or release.get('draft'):
+        raise ValueError('GitHub returned an unrecognized stable release.')
+    latest = '.'.join(match.groups())
+    if tuple(map(int, match.groups())) > tuple(map(int, VERSION.split('.'))):
+        return (f'OrcaSlicer {latest} is available. Profile Lab currently supports the {VERSION} library. '
+                'This newer library is not enabled yet; compatibility needs to be verified. Your library and drafts are unchanged.')
+    return (f'Your supported {VERSION} library is up to date with the latest stable release ({latest}). '
+            'This checks releases, not unreleased changes on GitHub.')
+
+
 def library_home() -> Path:
     base = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / ".local" / "share")))
     return base / "SlicerProfileLab" / "libraries"
@@ -24,6 +45,11 @@ def library_home() -> Path:
 
 def snapshot_path(root: Path) -> Path:
     return root / f"orca-{VERSION}-{REVISION[:12]}"
+
+
+def validation_resources_path(root: Path) -> Path:
+    """A read-only source-shaped tree for Orca's own validation engine."""
+    return snapshot_path(root) / "validation_resources"
 
 
 def read_snapshot(root: Path) -> dict | None:
@@ -140,6 +166,50 @@ def install_snapshot(root: Path, progress=lambda message: None) -> dict:
         if not destination.exists():
             prepared.rename(destination)
     return read_snapshot(root)
+
+
+def install_validation_resources(root: Path, progress=lambda message: None) -> Path:
+    """Cache only trusted upstream resources needed to compose user-profile checks."""
+    snapshot = read_snapshot(root)
+    if snapshot is None:
+        install_snapshot(root, progress)
+    destination = validation_resources_path(root)
+    if destination.is_dir():
+        return destination
+    root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="validation-source-", dir=root) as temporary:
+        staging = Path(temporary)
+        archive_path = staging / "source.zip"
+        progress("Preparing the matching system library for validation…")
+        request = urllib.request.Request(ARCHIVE_URL, headers={"User-Agent": "SlicerProfileLab/0.1"})
+        with urllib.request.urlopen(request, timeout=60) as response, archive_path.open("wb") as output:
+            received = 0
+            while chunk := response.read(1024 * 1024):
+                received += len(chunk)
+                if received > MAX_DOWNLOAD:
+                    raise ValueError("The download exceeds the supported size.")
+                output.write(chunk)
+        prepared = staging / "validation_resources"
+        profiles = prepared / "profiles"
+        prefix = f"OrcaSlicer-{REVISION}/resources/"
+        with zipfile.ZipFile(archive_path) as archive:
+            for entry in archive.infolist():
+                if entry.is_dir() or not entry.filename.startswith(prefix):
+                    continue
+                relative = PurePosixPath(entry.filename[len(prefix):])
+                if relative.is_absolute() or ".." in relative.parts or "\\" in str(relative):
+                    raise ValueError("Unsafe resource path in downloaded archive.")
+                # The profile tree and nozzle data are what the validation executable uses.
+                if not (relative.parts[0] == "profiles" or relative == PurePosixPath("info/nozzle_info.json")):
+                    continue
+                target = prepared.joinpath(*relative.parts)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(archive.read(entry))
+        if not profiles.is_dir():
+            raise ValueError("The downloaded source has no profile tree.")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        prepared.rename(destination)
+    return destination
 
 
 def search_profiles(profiles: list[dict], query: str = "", kind: str = "") -> list[dict]:

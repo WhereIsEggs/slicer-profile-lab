@@ -1,6 +1,7 @@
 import os
 import time
 import unittest
+from contextlib import ExitStack
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
@@ -10,7 +11,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 try:
     import psutil
     from PySide6.QtWidgets import QApplication
-    from profilelab.desktop import MainWindow, folder_picker_start
+    from profilelab.desktop import MainWindow, default_user_profile_folder, folder_picker_start
     from profilelab.library_view import LibraryView
     from profilelab.drafts_view import DraftsView
     from profilelab.setting_editor import SettingDialog, display_value
@@ -28,6 +29,14 @@ class DesktopTests(unittest.TestCase):
         cls.app = QApplication.instance() or QApplication([])
 
     def setUp(self):
+        self.temporary = TemporaryDirectory(prefix="profilelab-desktop-test-")
+        self.addCleanup(self.temporary.cleanup)
+        root = Path(self.temporary.name)
+        self.isolation = ExitStack()
+        self.addCleanup(self.isolation.close)
+        self.isolation.enter_context(patch("profilelab.library_view.library_home", return_value=root / "library"))
+        self.isolation.enter_context(patch("profilelab.library_view.drafts_home", return_value=root / "drafts"))
+        self.isolation.enter_context(patch("profilelab.drafts_view.drafts_home", return_value=root / "drafts"))
         with patch("profilelab.desktop.get_orca_status", return_value=OrcaStatus.CLOSED):
             self.window = MainWindow()
 
@@ -50,7 +59,7 @@ class DesktopTests(unittest.TestCase):
 
     def test_background_check_reports_when_engine_needs_a_complete_tree(self):
         self.run_check("valid_parent")
-        self.assertIn("Built-in checks passed", self.window.summary.text())
+        self.assertIn("Full validation is not confirmed", self.window.summary.text())
         self.assertIn("complete system profile library", self.window.results.toPlainText())
 
     def test_list_editor_keeps_text_types_and_plain_display(self):
@@ -128,6 +137,26 @@ class DesktopTests(unittest.TestCase):
             default.mkdir(parents=True)
             with patch.dict(os.environ, {"APPDATA": folder}):
                 self.assertEqual(folder_picker_start(""), str(default))
+
+    def test_check_my_profiles_uses_default_folder_and_engine_workspace(self):
+        from profilelab.engine_validator import EngineValidationResult
+        with TemporaryDirectory() as folder:
+            default = Path(folder) / "OrcaSlicer" / "user" / "default"
+            default.mkdir(parents=True)
+            (default / "profile.json").write_text('{"name":"Custom"}', encoding="utf-8")
+            with patch.dict(os.environ, {"APPDATA": folder}), \
+                 patch("profilelab.desktop.validation_engine_resources", return_value=Path(folder) / "resources") as resources, \
+                 patch("profilelab.desktop.run_orca_engine_for_user_profiles", return_value=EngineValidationResult("passed", "Orca's own engine check passed.")) as engine:
+                self.assertEqual(default_user_profile_folder(), default)
+                self.window.start_user_validation()
+                deadline = time.monotonic() + 10
+                while self.window.worker is not None and time.monotonic() < deadline:
+                    self.app.processEvents()
+                    time.sleep(0.005)
+            self.assertIsNone(self.window.worker)
+            resources.assert_called_once()
+            engine.assert_called_once_with(Path(folder) / "resources", default)
+            self.assertIn("Validation checks passed", self.window.summary.text())
 
     def test_background_check_displays_error_and_clears_stale_result(self):
         self.run_check("missing_parent")

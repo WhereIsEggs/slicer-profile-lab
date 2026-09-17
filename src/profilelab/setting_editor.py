@@ -1,11 +1,38 @@
 """Human-readable value display and type-preserving draft editing."""
 
 import math
+from decimal import Decimal, InvalidOperation
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel, QLineEdit,
     QPlainTextEdit, QScrollArea, QVBoxLayout, QWidget,
 )
 from profilelab.setting_types import BOOLEAN_KEYS
+
+# Narrow, explicitly supported input checks. These are not a complete Orca schema.
+NUMERIC_BOUNDS = {
+    "nozzle_diameter": (0, 10, False), "layer_height": (0, 10, False),
+    "printable_height": (0, 100000, False), "retraction_length": (0, 1000, True),
+    "retraction_speed": (0, 10000, True), "outer_wall_speed": (0, 10000, True),
+    "nozzle_temperature": (0, 1000, True), "filament_flow_ratio": (0, 10, False),
+    "wall_loops": (0, 10000, True), "sparse_infill_density": (0, 100, True),
+}
+
+
+def check_numeric_text(key, value):
+    if key not in NUMERIC_BOUNDS:
+        return
+    text = str(value).strip()
+    if key == "sparse_infill_density":
+        text = text.removesuffix("%")
+    try:
+        number = Decimal(text)
+    except InvalidOperation:
+        raise ValueError("Enter a number for this setting.") from None
+    low, high, allow_zero = NUMERIC_BOUNDS[key]
+    if not number.is_finite() or number > high or number < low or (number == low and not allow_zero):
+        raise ValueError(f"Enter a number {'from' if allow_zero else 'greater than'} {low} and no greater than {high}.")
+    if key == "wall_loops" and number != number.to_integral_value():
+        raise ValueError("Wall loops must be a whole number.")
 
 
 def display_value(value, key=None):
@@ -34,6 +61,7 @@ class SettingDialog(QDialog):
         self.setWindowTitle(label)
         self.resize(460, 240)
         self.original = value
+        self.key = key
         self.value = value
         self.editors = []
         layout = QVBoxLayout(self)
@@ -102,9 +130,10 @@ class SettingDialog(QDialog):
                             raise ValueError()
                     else:
                         new = text
+                check_numeric_text(self.key, new)
                 values.append(new)
-        except ValueError:
-            self.error.setText("Enter a valid number. Whole-number settings require a whole number.")
+        except ValueError as error:
+            self.error.setText(str(error) or "Enter a valid number. Whole-number settings require a whole number.")
             return
         self.value = values if isinstance(self.original, list) else values[0]
         self.accept()

@@ -15,6 +15,24 @@ def drafts_home():
     return library_home().parent / "drafts"
 
 
+def delete_draft(root, original):
+    """Move exactly one unchanged draft to a recoverable private trash folder."""
+    root = Path(root).resolve()
+    identity = str(UUID(original['id']))
+    source = root / f'{identity}.json'
+    if source.resolve().parent != root or source.is_symlink():
+        raise ValueError('Linked draft files cannot be deleted.')
+    if json.loads(source.read_text(encoding='utf-8')) != original:
+        raise ValueError('This draft changed. Refresh drafts before deleting it.')
+    trash = root / 'deleted'
+    if trash.resolve() != trash:
+        raise ValueError('Linked deleted-drafts folder is not supported.')
+    trash.mkdir(exist_ok=True)
+    destination = trash / f'{identity}-{uuid4().hex}.json'
+    source.rename(destination)
+    return destination
+
+
 def load_drafts(root):
     drafts, errors = [], []
     if not root.exists():
@@ -52,6 +70,7 @@ def create_draft(root, name, profile, metadata, resolver):
         "library": {key: metadata[key] for key in ("version", "revision")},
         "base": {key: profile[key] for key in ("name", "vendor", "path")},
         "base_profile": deepcopy(profile["settings"]),
+        "base_chain": deepcopy(resolver.chain(profile)),
         "base_values": {key: deepcopy(value.value) for key, value in resolved.items()},
         "base_sources": {key: {"name": value.source_name, "vendor": value.source_vendor,
                                 "path": value.source_path} for key, value in resolved.items()},

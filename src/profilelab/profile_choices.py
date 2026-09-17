@@ -5,16 +5,24 @@ from profilelab.resolver import ProfileResolver, ResolutionError
 
 
 def compatible_filaments(draft, snapshot):
+    return _compatible_profiles(draft, snapshot, "filament")
+
+
+def compatible_processes(draft, snapshot):
+    return _compatible_profiles(draft, snapshot, "process")
+
+
+def _compatible_profiles(draft, snapshot, kind):
     if not snapshot or snapshot["metadata"].get("revision") != draft["library"].get("revision"):
         return []
     if draft["type"] != "machine":
         return []
     profiles = snapshot["profiles"]
     resolver = ProfileResolver(profiles)
-    counts = Counter(p["name"] for p in profiles if p["type"] == "filament" and not p.get("template", True))
+    counts = Counter(p["name"] for p in profiles if p["type"] == kind and not p.get("template", True))
     result = []
     for profile in profiles:
-        if profile["type"] != "filament" or profile.get("template", True) or counts[profile["name"]] != 1:
+        if profile["type"] != kind or profile.get("template", True) or counts[profile["name"]] != 1:
             continue
         # Shared-library exclusions are defined outside individual profiles.
         # Until that metadata is supported, do not promise compatibility.

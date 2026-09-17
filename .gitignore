@@ -13,3 +13,6 @@ profiles/
 
 # Packaging metadata
 *.egg-info/
+
+# Generated demo screenshots and disposable rehearsal artifacts
+artifacts/

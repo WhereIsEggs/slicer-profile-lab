@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget, QTabWidget, QSplitter, QSplitterHandle, QInputDialog, QMessageBox,
 )
 
-from profilelab.library import VERSION, install_snapshot, library_home, read_snapshot, search_profiles
+from profilelab.library import VERSION, install_snapshot, library_home, read_snapshot, search_profiles, check_library_updates
 from profilelab.resolver import ProfileResolver, ResolutionError
 from profilelab.drafts import create_draft, drafts_home
 from profilelab.setting_editor import display_value
@@ -70,13 +70,25 @@ class LibraryWorker(QThread):
             self.failed.emit(f"Library could not be loaded: {error}")
 
 
+class LibraryUpdateWorker(QThread):
+    result = Signal(str)
+
+    def run(self):
+        try:
+            self.result.emit(check_library_updates())
+        except Exception as error:
+            self.result.emit(f"Could not check for updates: {error}. Your saved library is still available.")
+
+
 class LibraryView(QWidget):
     draft_created = Signal(object)
 
-    def __init__(self, parent=None, root=None, draft_root=None):
+    def __init__(self, parent=None, root=None, draft_root=None, snapshot=None):
         super().__init__(parent)
         self.root = root if root is not None else library_home()
         self.worker = None
+        self.update_worker = None
+        self.demo_mode = bool(snapshot and snapshot["metadata"].get("demo"))
         self.profiles = []
         self.matches = []
         self.resolver = ProfileResolver([])
@@ -88,7 +100,8 @@ class LibraryView(QWidget):
         title = QLabel("System profile library")
         title.setStyleSheet("font-size: 24px; font-weight: 600;")
         layout.addWidget(title)
-        note = QLabel("Official OrcaSlicer 2.4.2 profiles. Select a profile to see its own and inherited values.")
+        note = QLabel("Fictional offline library. Select the Demo Dual Printer, then create your own draft."
+                      if self.demo_mode else "Official OrcaSlicer 2.4.2 profiles. Select a profile to see its own and inherited values.")
         note.setWordWrap(True)
         layout.addWidget(note)
         self.status = QLabel("No library downloaded yet.")
@@ -97,6 +110,12 @@ class LibraryView(QWidget):
         self.download = QPushButton(f"Download {VERSION} library")
         self.download.clicked.connect(self.start_download)
         layout.addWidget(self.download)
+        self.download.setVisible(not self.demo_mode)
+        self.check_updates = QPushButton("Check for updates")
+        self.check_updates.setToolTip("Check GitHub for a newer stable OrcaSlicer release. Does not replace your library or drafts.")
+        self.check_updates.clicked.connect(self.start_update_check)
+        self.check_updates.setVisible(not self.demo_mode)
+        layout.addWidget(self.check_updates)
         row = QHBoxLayout()
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search profile, vendor, or parent…")
@@ -121,6 +140,8 @@ class LibraryView(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setAlternatingRowColors(True)
+        self.table.verticalHeader().hide()
         self.table.itemSelectionChanged.connect(self.show_selected)
         self.panel_splitter = ProfileSplitter(Qt.Orientation.Vertical)
         self.panel_splitter.setChildrenCollapsible(False)
@@ -140,6 +161,8 @@ class LibraryView(QWidget):
         self.settings_table.setHorizontalHeaderLabels(["Setting", "Value", "Origin", "Source profile"])
         self.settings_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.settings_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.settings_table.setAlternatingRowColors(True)
+        self.settings_table.verticalHeader().hide()
         effective_layout.addWidget(self.settings_table)
         detail_tabs.addTab(effective, "Resolved settings")
         self.details = QTextEdit()
@@ -153,18 +176,36 @@ class LibraryView(QWidget):
         self.panel_splitter.handle(1).setToolTip("Drag up or down to resize the profile list and settings")
         self.panel_splitter.handle(1).setCursor(Qt.CursorShape.SplitVCursor)
         layout.addWidget(self.panel_splitter, 1)
-        attribution = QLabel('Source: <a href="https://github.com/OrcaSlicer/OrcaSlicer/tree/v2.4.2/resources/profiles">'
+        attribution = QLabel('Fictional demonstration data · Not manufacturer-approved print settings' if self.demo_mode else
+                             'Source: <a href="https://github.com/OrcaSlicer/OrcaSlicer/tree/v2.4.2/resources/profiles">'
                              'OrcaSlicer public profiles</a> · AGPL-3.0 · Offline after download')
         attribution.setOpenExternalLinks(True)
         layout.addWidget(attribution)
         try:
-            snapshot = read_snapshot(self.root)
+            snapshot = snapshot if snapshot is not None else read_snapshot(self.root)
             if snapshot:
                 self.show_snapshot(snapshot)
         except Exception as error:
             self.status.setText(f"Saved library could not be read: {error}")
 
+    def start_update_check(self):
+        if self.demo_mode or self.update_worker is not None:
+            return
+        self.check_updates.setEnabled(False)
+        self.status.setText("Checking official OrcaSlicer releases on GitHub…")
+        self.update_worker = LibraryUpdateWorker(self)
+        self.update_worker.result.connect(self.status.setText)
+        self.update_worker.finished.connect(self.update_check_finished)
+        self.update_worker.start()
+
+    def update_check_finished(self):
+        self.update_worker.deleteLater()
+        self.update_worker = None
+        self.check_updates.setEnabled(True)
+
     def start_download(self):
+        if self.demo_mode:
+            return
         if self.worker is not None:
             return
         self.download.setEnabled(False)
@@ -185,7 +226,8 @@ class LibraryView(QWidget):
         self.resolver = ProfileResolver(self.profiles)
         metadata = snapshot["metadata"]
         self.metadata = metadata
-        self.status.setText(f"OrcaSlicer {metadata['version']} · Revision {metadata['revision'][:12]} · "
+        self.status.setText("DEMO · Ready offline · Your real library is unchanged" if self.demo_mode else
+                            f"OrcaSlicer {metadata['version']} · Revision {metadata['revision'][:12]} · "
                             f"Downloaded {metadata['downloaded_at'][:10]}")
         self.download.setText("Library available offline")
         self.download.setEnabled(False)
@@ -219,7 +261,7 @@ class LibraryView(QWidget):
         self.resolved = {}
         try:
             self.resolved = self.resolver.resolve(profile)
-            self.create_button.setEnabled(profile["type"] in {"machine", "filament", "process"})
+            self.create_button.setEnabled(profile["type"] in {"machine", "filament", "process"} and not profile.get("template", False))
             self.resolution_status.setText(
                 f"{len(self.resolved)} settings from the profile chain. "
                 "OrcaSlicer's internal defaults are not included."
