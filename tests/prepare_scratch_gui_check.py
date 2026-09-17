@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 WhereIsEggs (Profile Lab contributions).
+# See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
 """Manual GUI test input; fictional data only, no installation or app launch."""
 from pathlib import Path
 from uuid import uuid4

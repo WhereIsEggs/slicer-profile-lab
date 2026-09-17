@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 WhereIsEggs (Profile Lab contributions).
+# See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
+# Orca-derived rules/vectors adapted for Profile Lab; modified 2026-09-17.
 """Pinned Orca identity primitives; system IDs are NOT user/cloud IDs.
 
 Reference: OrcaSlicer scripts/orca_id_tool.py and test_preset_setting_id.cpp

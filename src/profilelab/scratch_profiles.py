@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 WhereIsEggs (Profile Lab contributions).
+# See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
 """Explicit starter settings for new FFF profiles; no hidden donor profile."""
 from decimal import Decimal, InvalidOperation
 

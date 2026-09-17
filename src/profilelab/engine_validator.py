@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 WhereIsEggs (Profile Lab contributions).
+# See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
 """Safe, optional use of OrcaSlicer's own profile validation engine."""
 
 from dataclasses import dataclass
@@ -8,6 +11,7 @@ import shutil
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
+from profilelab.external_runtime import external_dll_search, external_environment
 
 
 def engine_home() -> Path:
@@ -119,18 +123,19 @@ def run_orca_engine_for_user_profiles(resources: Path, user_profiles: Path,
         return result
 
 
+@external_dll_search()
 def _run_copied_tree(executable: Path, copied_tree: Path, timeout_seconds: int, slice_profiles: bool = True) -> EngineValidationResult:
     command = [str(executable), "--path", str(copied_tree), "--log_level", "2",
                "--check_filament_subtypes", "--slice"]
     if not slice_profiles:
         command = command[:5]
-    environment = os.environ.copy()
-    environment["PATH"] = str(executable.parent) + os.pathsep + environment.get("PATH", "")
+    environment = external_environment(executable)
     try:
         completed = subprocess.run(
             command, capture_output=True, text=True, encoding="utf-8",
             errors="replace", timeout=timeout_seconds, check=False,
             cwd=executable.parent, env=environment,
+            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
         )
     except subprocess.TimeoutExpired:
         return EngineValidationResult("failed", "The Orca engine check took too long and was stopped safely.")
@@ -164,8 +169,9 @@ def _run_with_qt_process(command: list[str], executable: Path,
     try:
         from PySide6.QtCore import QProcess, QProcessEnvironment
         process = QProcess()
-        environment = QProcessEnvironment.systemEnvironment()
-        environment.insert("PATH", str(executable.parent) + os.pathsep + os.environ.get("PATH", ""))
+        environment = QProcessEnvironment()
+        for key, value in external_environment(executable).items():
+            environment.insert(key, value)
         process.setProcessEnvironment(environment)
         process.setWorkingDirectory(str(executable.parent))
         process.setProgram(command[0])
@@ -192,6 +198,8 @@ def _run_with_qt_process(command: list[str], executable: Path,
 def _run_with_console_python(command: list[str], executable: Path,
                              timeout_seconds: int) -> tuple[EngineValidationResult | None, str]:
     """Retry from python.exe when a Windows GUI host cannot create the Orca process."""
+    if getattr(sys, 'frozen', False):
+        return None, 'Console-Python fallback is unavailable in the packaged app; check the engine installation.'
     console_python = Path(sys.executable).with_name("python.exe")
     if not console_python.is_file():
         return None, f"console Python was not found beside {sys.executable}"

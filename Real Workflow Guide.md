@@ -1,5 +1,8 @@
 # Slicer Profile Lab workflow guide
 
+Profile Lab is AGPL-3.0-only, Copyright (C) 2026 WhereIsEggs for original
+contributions, without warranty. See [licensing and source access](docs/licensing.md).
+
 This describes the real application. See the
 [README](README.md) for setup and the feature overview. Items marked **planned**
 are not available yet.
@@ -198,8 +201,9 @@ and limitations. This is not coverage of every vendor/hardware configuration.
 - Reviewed library/engine upgrades, version selection, change review and rollback.
 - Easier matched engine/source setup and actionable validation explanations.
 - Portable/cloud-account/custom installation destinations.
-- Package/set cleanup, broader installed-profile management and desktop
-  distribution without Python setup.
+- Package/set cleanup, broader installed-profile management and signed public
+  desktop releases. A private Windows alpha installer now bundles Python;
+  see the [alpha testing guide](docs/alpha-testing.md).
 
 Draft deletion and removing a set member already exist; they do not delete
 exported packages or uninstall profiles. There is no general package cleanup or

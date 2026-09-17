@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 WhereIsEggs (Profile Lab contributions).
+# See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
 """Small, explicit guided forms; blank fields are not guessed."""
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QLabel, QLineEdit,
     QComboBox, QPlainTextEdit, QDialogButtonBox, QMessageBox, QScrollArea, QWidget)

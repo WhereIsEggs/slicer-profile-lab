@@ -1,5 +1,9 @@
 # Slicer Profile Lab
 
+Copyright (C) 2026 WhereIsEggs. Licensed under **AGPL-3.0-only**.
+See [LICENSE.txt](LICENSE.txt), [attribution](NOTICE.md), and
+[source/redistribution instructions](docs/licensing.md). Provided without warranty.
+
 A native desktop workspace for creating, mixing, checking, installing and sharing
 **OrcaSlicer printer, filament and process profiles** without hand-editing JSON.
 The goal is a clean, beginner-friendly interface that handles dependencies behind
@@ -11,6 +15,14 @@ complete replacement for Orca's settings editor. Passing checks does not certify
 print safety.
 
 ## Get started
+
+For private Windows x64 alpha testing, use the **0.1.0 Alpha 1 installer** supplied
+by **WhereIsEggs**. Python is included; no separate development setup is needed.
+The installer is unsigned and is not yet a public GitHub release. See the
+[alpha testing guide](docs/alpha-testing.md) for precautions and testing steps,
+and [Windows release guide](docs/windows-release.md) for reproducible builds.
+
+### Run from source
 
 Windows is the currently tested desktop/install platform. Use Python 3.12 or newer
 (the project declares `>3.11`). From the repository folder:
@@ -159,7 +171,7 @@ Roadmap items below are not current capabilities or promises of release dates.
   The current install button targets the normal `user/default` folder.
 - Broader package/set cleanup and installed-profile management. Draft deletion
   and removing a set member exist; a general uninstall/package manager does not.
-- Distributable desktop packaging without Python setup, and wider recipient,
+- Signed public desktop releases and wider recipient,
   platform and version regression coverage.
 
 Review temperatures, dimensions, motion limits, filament diameter, extruder

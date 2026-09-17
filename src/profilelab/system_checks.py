@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 WhereIsEggs (Profile Lab contributions).
+# See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
+# Orca-derived rules/vectors adapted for Profile Lab; modified 2026-09-17.
 """Publishing checks used by OrcaSlicer for complete system profile trees."""
 
 import json

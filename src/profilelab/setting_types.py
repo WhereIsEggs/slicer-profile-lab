@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 WhereIsEggs (Profile Lab contributions).
+# See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
 """Boolean definitions from OrcaSlicer 2.4.2 PrintConfig.cpp.
 
 Source revision: 8500fcdccaa10b5099ac20d252af3a7c560046f1.

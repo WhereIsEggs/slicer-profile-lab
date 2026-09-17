@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 WhereIsEggs (Profile Lab contributions).
+# See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
 """Read-only visual regression capture using the real cached library."""
 import os
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 WhereIsEggs (Profile Lab contributions).
+# See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
 """Native desktop validation window. Profile files are read only."""
 
 import os
@@ -22,6 +25,8 @@ from profilelab.drafts_view import DraftsView
 from profilelab.profile_sets_view import ProfileSetsView
 from profilelab.demo import initialize_demo
 from profilelab.desktop_theme import apply_theme
+from profilelab import DISPLAY_VERSION
+from profilelab.legal import LEGAL_SUMMARY, show_legal_information
 
 
 def folder_picker_start(current_folder: str) -> str:
@@ -100,7 +105,7 @@ class MainWindow(QMainWindow):
         self.engine_worker = None
         self.demo_root = Path(demo_root) if demo_root is not None else None
         demo = initialize_demo(self.demo_root) if self.demo_root is not None else None
-        self.setWindowTitle("Slicer Profile Lab")
+        self.setWindowTitle(f"Slicer Profile Lab — {DISPLAY_VERSION}")
         self.resize(1180, 800)
         self.setMinimumSize(920, 620)
         if demo:
@@ -113,6 +118,21 @@ class MainWindow(QMainWindow):
         body = QWidget()
         layout = QVBoxLayout(body)
         layout.setContentsMargins(32, 28, 32, 28)
+        help_menu = self.menuBar().addMenu('Help')
+        legal_action = help_menu.addAction('License and source code')
+        legal_action.triggered.connect(lambda: show_legal_information(self))
+        if not demo:
+            alpha_note = QLabel('ALPHA TEST BUILD · Back up your Orca profiles before testing. Review settings before printing.')
+            alpha_note.setWordWrap(True)
+            layout.addWidget(alpha_note)
+            about = help_menu.addAction('About / testing information')
+            about.triggered.connect(lambda: QMessageBox.information(self, 'About Slicer Profile Lab',
+                f'Slicer Profile Lab {DISPLAY_VERSION}\nPublisher: WhereIsEggs\n\n'
+                'Experimental Windows x64 build. Share Profile Lab ZIP files, not Orca re-exported bundles. '
+                'Uninstalling the app preserves drafts, packages and Orca profiles.\n\n'
+                'Report issues: https://github.com/WhereIsEggs/slicer-profile-lab/issues\n'
+                'Include this version, your Orca version, steps and a sanitized example. '
+                'Do not post private profiles or personal information.\n\n' + LEGAL_SUMMARY))
         layout.setSpacing(16)
         title = QLabel("Check your profile set")
         title.setStyleSheet("font-size: 26px; font-weight: 600;")

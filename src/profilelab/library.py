@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 WhereIsEggs (Profile Lab contributions).
+# See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
 """An immutable, release-pinned public profile library, separate from user data."""
 
 import hashlib
@@ -158,7 +161,7 @@ def install_snapshot(root: Path, progress=lambda message: None) -> dict:
             "download_url": ARCHIVE_URL, "downloaded_at": datetime.now(timezone.utc).isoformat(),
             "archive_sha256": digest.hexdigest(), "catalog_sha256": hashlib.sha256(payload).hexdigest(),
             "profile_count": len(catalog),
-            "license_url": f"{SOURCE}/blob/{REVISION}/LICENSE",
+            "license_url": f"{SOURCE}/blob/{REVISION}/LICENSE.txt",
         }
         (prepared / "source.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         # Rename on the same drive publishes only a fully built snapshot.

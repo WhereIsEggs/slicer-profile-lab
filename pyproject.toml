@@ -1,12 +1,15 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "slicer-profile-lab"
-version = "0.1.0"
+version = "0.1.0a1"
 description = "Validate and compare OrcaSlicer profile sets."
 readme = "README.md"
+license = "AGPL-3.0-only"
+license-files = ["LICENSE.txt", "NOTICE.md", "packaging/THIRD-PARTY-NOTICES.md"]
+authors = [{name = "WhereIsEggs"}]
 requires-python = ">3.11"
 dependencies = []
 

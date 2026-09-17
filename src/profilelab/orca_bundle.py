@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 WhereIsEggs (Profile Lab contributions).
+# See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
 """Experimental Orca bundle writer based on Orca's ZIP import contract.
 
 Archive verification is not a substitute for testing the Orca GUI importer.
