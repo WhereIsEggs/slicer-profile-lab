@@ -1,129 +1,198 @@
 # Slicer Profile Lab
 
-A Python command-line tool for checking OrcaSlicer profile folders.
+A native desktop workspace for creating, mixing, checking, installing and sharing
+**OrcaSlicer printer, filament and process profiles** without hand-editing JSON.
+The goal is a clean, beginner-friendly interface that handles dependencies behind
+the scenes. A command-line validator is also included.
 
-## Desktop preview
+**Status: active development / experimental.** The real library → draft or set →
+package → install → recipient import workflow is implemented. This is not yet a
+complete replacement for Orca's settings editor. Passing checks does not certify
+print safety.
 
-Install the optional desktop interface in the activated virtual environment:
+## Get started
 
-    python -m pip install -e ".[desktop]"
+Windows is the currently tested desktop/install platform. Use Python 3.12 or newer
+(the project declares `>3.11`). From the repository folder:
 
-Launch the native window:
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[desktop]"
+.\.venv\Scripts\python.exe -m profilelab.desktop
+```
 
-    profilelab-desktop
+After setup, double-click **Start Profile Lab.cmd**. With the virtual environment
+activated, `profilelab-desktop` works too. No browser or web server is required.
+The desktop extra installs PySide6 and psutil; Orca's optional engine is a separate
+download.
 
-Alternatively, run `python -m profilelab.desktop`.
-Choose a folder and click **Check profiles**. Validation runs in the background.
-On Windows, the folder picker starts at `%APPDATA%\OrcaSlicer\user\default`
-when it exists, falling back to `%APPDATA%\OrcaSlicer`, then your home folder.
-Once a folder is selected,
-the picker starts there. Custom or portable locations can be selected manually.
-Opening the picker does not scan profiles. Choose a profile folder rather than
-the entire configuration directory, which can contain unrelated JSON files.
-The desktop can read profiles and create separate application drafts; it does not
-yet export or install profiles. Draft values can be edited as described below.
-It reports OrcaSlicer process status, but read-only
-checks remain available while OrcaSlicer is open.
+See the [Workflow guide](Real%20Workflow%20Guide.md) for step-by-step instructions.
+The fictional offline sandbox remains an internal regression-test fixture; the
+normal launcher opens the real application.
 
-Future installation actions must recheck that OrcaSlicer is closed immediately
-before writing. Unknown process status blocks installation. Process detection
-is a snapshot, not a lock preventing OrcaSlicer from starting afterward.
-The planned profile builder targets OrcaSlicer 2.4.2 and will follow its settings
-organization; this preview does not yet certify 2.4.2 import compatibility.
+## Available now
 
-Draft creation currently starts from the public **System library**. A future
-**User profile** starting point will use the user location above, with manual
-selection for cloud account or custom locations. Source profiles are preserved.
+### System library and inheritance
 
-## System library preview
+- Download the official **2.4.2** library pinned to
+  `8500fcdccaa10b5099ac20d252af3a7c560046f1`; browse offline after download.
+- Search/filter profiles; inspect original JSON and resolved settings, including
+  inherited/overridden values and their source profiles.
+- Resize the profile list and settings panel using the visible draggable divider.
+- **Check for updates** reports newer official stable GitHub releases. It does
+  **not** upgrade the library, engine or saved work.
+- In profile sets, **Add from library** filters category, vendor and search, plus
+  explicit printer model/nozzle variant. It shows ancestry and blocks unresolved sources.
+- Non-instantiated templates are excluded from creation choices but remain
+  inspectable. Generic selectable profiles are not hidden based on names alone.
 
-The desktop **System library** tab downloads and searches the official OrcaSlicer
-2.4.2 profiles pinned to revision `8500fcdccaa10b5099ac20d252af3a7c560046f1`.
-The initial download is a full upstream source ZIP; only profile JSON is indexed.
-The temporary source archive is removed after indexing. The catalog is stored
-under `%LOCALAPPDATA%\SlicerProfileLab\libraries` and works offline afterward.
-The source URL, revision, download date, and integrity hashes are recorded beside it.
-Downloads are staged before publication; an incomplete download is never activated.
+Downloads are staged; the cache records source/revision/integrity information.
+It is separate from Orca's installed compiled `.opc` files. Public profiles
+belong to OrcaSlicer and its contributors; upstream source/license attribution
+(AGPL-3.0) is recorded in the cache's `source.json`. Resolved values include
+explicitly saved ancestor settings, not all Orca internal defaults.
 
-Search by name, vendor, or parent and filter by profile type. The preview displays
-stored source settings and a read-only **Resolved settings** table. The table
-combines explicitly stored values along the parent chain and identifies inherited,
-overridden, locally defined, and same-as-parent values with their source profile.
-It does not include OrcaSlicer's internal application defaults or normalize values.
-Parent lookup uses vendor and profile type, with shared OrcaFilamentLibrary fallback
-for filaments. Missing or ambiguous parents and cycles prevent displaying a partial
-result. Source JSON remains available in a separate tab. Vendor manifests are excluded
-from the profile list, and base templates remain available for inspection. This
-library is separate from OrcaSlicer's installed `.opc` files and may differ from
-installed profile updates. It does not yet certify import
-compatibility, generate profiles, check for newer releases, or offer rollback controls.
-Public upstream profiles are attributed to OrcaSlicer (AGPL-3.0); see the source
-and license link recorded in `source.json`.
+### Drafts and friendly editing
 
-## Draft workspace
+- Create independent named drafts from system profiles, leaving originals unchanged.
+- Freeze source revision/starting values; save overrides automatically and reopen
+  offline. Reset individual settings to baseline; changed values appear in bold.
+- Click values to edit; setting names remain read-only. Lists display without JSON
+  brackets, known booleans use On/Off, and G-code has a multiline editor.
+- Supported draft reference fields offer constrained library choices. Extruder-aware
+  fields use E0/E1, with Left/Right labels for two slots.
+- **Delete draft…** confirms removal and preserves a recoverable `deleted-drafts`
+  copy. Packages and installed profiles are not deleted.
 
-Select a printer variant, filament, or process in **System library**, then click
-**Create draft from selected profile** and enter a new name. The app opens the
-saved draft under **My drafts**. Drafts live in
-`%LOCALAPPDATA%\SlicerProfileLab\drafts`, separately from OrcaSlicer profiles.
-Each draft stores its source revision, base profile, resolved starting values,
-and a separate (initially empty) overrides dictionary. Names are never used as
-filesystem paths. Drafts reopen offline and retain their starting values if the
-system library changes. These are application workspace files, not importable
-OrcaSlicer exports. Click a value under **My drafts** to edit it. Lists display
-without JSON syntax and edit as individual fields; text, numbers, native booleans,
-and multiline G-code retain their stored types. Changes save as overrides, appear
-in bold, and can be reset to their starting values. Setting names are read-only.
-Structured values and empty lists require future specialized editors. Numeric
-strings remain text fields: exact OrcaSlicer enums, units, limits, and semantic
-validation are not yet implemented. Export and installation remain unavailable.
+Numeric validation, reference choices and specialized editors cover a limited
+subset—not every Orca setting, enum or compatibility expression.
 
-## Command-line usage
+### Multi-printer sets and scratch creation
 
-With the project's virtual environment activated, run:
+- A saved wizard: **Printers → Filaments → Processes → Assignments and review**.
+- Mix library profiles and drafts, or create starter profiles from scratch.
+- Include multiple printers, materials and processes in one set; duplicate members
+  as nozzle-size or printer-size variants.
+- Assign materials/processes per printer, including shared materials,
+  nozzle-specific processes and default filament for each extruder.
+- Save incomplete work automatically. Missing defaults, stale references and
+  unassigned members block packaging. Supported diameter/layer-height checks warn
+  about inconsistencies.
+- Preserve source ancestry/revision as project metadata, including on duplicated
+  variants, without adding non-Orca fields to exported profile JSON.
 
-    profilelab <profile-folder>
+Scratch forms cover rectangular, front-left-origin FFF printers with one or two
+extruders, basic filament settings and basic process settings. Machine G-code and
+dual-extruder offsets must be supplied. These are starter forms, not a complete
+generator for every printer architecture.
 
-The tool searches the selected folder and its subfolders for JSON files.
+### Packaging, installation and sharing
 
-Example using fictional test profiles:
+- Review members, then save automatically using the draft/set name—no routine
+  Save As dialog. Keep an internal prepared `.orca_bundle` and a sharing **ZIP**.
+- Resolve saved parent values into self-contained ordinary user presets; establish
+  explicit printer/material/process links without requiring hidden system parents
+  on the recipient's computer.
+- Install to Windows `OrcaSlicer/user/default` as **User** presets, not system or
+  bundle presets. Recheck that Orca is closed; unknown process status blocks writing.
+- Refuse existing-name collisions instead of overwriting; stage installation and
+  clean up newly created files if installation fails.
+- Import the sharing ZIP in Orca with **File → Import → Import Configs**.
 
-    profilelab tests/fixtures/valid_parent
+**Share Profile Lab's ZIP, not an Orca re-exported `.orca_printer` bundle.** In our
+stock 2.4.2 and pinned 2.5.0-dev tests, Orca exported all files but bundle import
+lost compatibility links. Profile Lab ZIP imports and selected profiles survived
+restart. See the [compatibility audit](docs/upstream-variant-audit.md).
 
-## Current checks
+### Validation
 
-- Missing parent profiles referenced by `inherits`
-- Duplicate profile names
-- Malformed JSON
-- JSON content that is not an object
-- Missing, empty, whitespace-only, or non-string profile names
-- Folder paths that do not exist or are not directories
-- Folders containing no JSON files
-- Inheritance cycle detection
+- Built-in checks: missing/invalid folders, empty profile folders, malformed or
+  non-object JSON, invalid names, duplicate names, missing parents and cycles.
+- Additional ID/reference checks for recognized complete system trees. System
+  identity rules are not imposed indiscriminately on ordinary user profiles.
+- **Check my OrcaSlicer profiles** provides an installed-user-profile check path;
+  system sources are used privately where available.
+- **Install Orca engine** downloads official nightly assets, verifies published
+  checksums and installs into Profile Lab's private cache.
+- Background checks distinguish built-in results from unavailable, failed or
+  incomplete engine validation. Read-only checks can run while Orca is open.
 
-Errors include the affected file paths where applicable.
+Full engine checks require matching source JSON/resources; compiled `.opc`
+files alone are insufficient. User-profile engine checks cover loading/inheritance,
+not slicing. Complete source-tree checks can exercise upstream slicing/subtype
+checks. Packaging does not automatically certify full-engine validation.
 
-## Exit codes
+## Versions and verification
 
-- `0`: validation completed without finding problems
-- `1`: validation found a problem or could not complete
+The production library remains **2.4.2**. Separate development testing used clean
+**2.5.0-dev**, commit `f520e9221f220657f752d269ead37dd61e9cb0c3`—not a final 2.5.0 release.
 
-In PowerShell, run `$LASTEXITCODE` immediately after the command
-to see its exit code.
+As of September 17, 2026:
 
-## Tests
+- 159 Profile Lab tests passed with native/public-library/upstream-ID opt-ins.
+- 55 upstream Python ID tests and 104 upstream native profile tests passed.
+- GUI checks covered 0.4/0.8 switching, matching processes, ZIP recipient import
+  and restart in stock 2.4.2 and the pinned development build.
+- Development system-model grouping worked. User presets retain their own display
+  behavior. A legacy dual fixture showed two slots but a blank nozzle selector;
+  complete newer dual/flow-variant UI support is not certified.
 
-Run the automated tests with:
+The local build and **Start Orca 2.5 Test.cmd** are maintainer test conveniences,
+not a bundled Orca dependency or installer for GitHub users. The launcher expects
+a specific local checkout and uses isolated test data.
 
-    python -m unittest discover -s tests
+## Planned—not implemented yet
 
-Fixtures use fictional profiles. Do not add internal profile exports
-unless they have been explicitly sanitized for this project.
+Roadmap items below are not current capabilities or promises of release dates.
 
-## Current limitations
+- Full Orca-style categorized settings pages: comprehensive labels, units, help,
+  enums, limits, structured-value editors and version-aware schema validation.
+- Broader scratch creation, guided printer-family/variant editing and complete
+  newer dual-extruder/flow-variant metadata support.
+- Existing user profiles as direct editable starting points, broader compatibility
+  expression handling and user-profile reference choices.
+- Reviewed library/engine upgrades, version selection, change review and rollback.
+  The current update button only checks for newer stable releases.
+- Easier matched engine/source setup and clearer actionable validation throughout
+  creation, packaging and installation.
+- Configurable portable, cloud-account and custom installation destinations.
+  The current install button targets the normal `user/default` folder.
+- Broader package/set cleanup and installed-profile management. Draft deletion
+  and removing a set member exist; a general uninstall/package manager does not.
+- Distributable desktop packaging without Python setup, and wider recipient,
+  platform and version regression coverage.
 
-Parents must exist within the selected folder tree. The tool does
-not look for parents in OrcaSlicer's built-in profiles.
+Review temperatures, dimensions, motion limits, filament diameter, extruder
+mapping and G-code before printing. Assignment establishes links, not physical
+suitability. Printer switching can select Generic PLA rather than the assigned
+default; explicitly check filament and process selectors.
 
-Malformed JSON or an invalid profile structure stops validation
-at the first such file.
+## Data locations (Windows)
+
+| Data | Default location |
+| --- | --- |
+| Library | `%LOCALAPPDATA%\SlicerProfileLab\libraries` |
+| Drafts, sets, packages | `%LOCALAPPDATA%\SlicerProfileLab\drafts`, `sets`, `sharing` |
+| Private engine | `%LOCALAPPDATA%\SlicerProfileLab\engine` |
+| Installation target | `%APPDATA%\OrcaSlicer\user\default` (`machine`, `filament`, `process`) |
+
+## Command line and tests
+
+With the virtual environment activated:
+
+```powershell
+profilelab <profile-folder>
+profilelab tests/fixtures/valid_parent
+python -m unittest discover -s tests
+```
+
+The CLI recursively checks JSON profiles using built-in validation, not the
+optional engine. Exit code `0` means no built-in problems found; `1` means
+problems/incomplete validation. In PowerShell, inspect `$LASTEXITCODE`.
+A standalone folder check expects parents within that tree and stops at the first
+malformed/invalid profile. Use the desktop user-profile path for installed profiles.
+
+Native, cached-library and pinned-upstream tests are opt-in and may be skipped by
+the ordinary command. See the [audit](docs/upstream-variant-audit.md) for exact
+setup/results. Use fictional or public fixtures; do not commit private profile
+exports, caches or build artifacts.

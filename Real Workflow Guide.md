@@ -1,109 +1,207 @@
-# Present the real Slicer Profile Lab
+# Slicer Profile Lab workflow guide
 
-## Mix-and-match sets
+This describes the real application. See the
+[README](README.md) for setup and the feature overview. Items marked **planned**
+are not available yet.
 
-The **My profile sets** tab now walks through **Printers → Filaments → Processes
-→ Assignments and review**, with Back/Next controls and saved unfinished work.
-Add multiple printers, filaments, and processes. **Duplicate as variant…** copies
-the selected profile so you can name a nozzle/bed-size variant and edit its values.
-Original drafts and library files remain unchanged.
+## 1. Open the app and get the library
 
-In **Assign profiles and defaults…**, each printer has its own page. Check the
-filaments and processes it supports, then select default filaments per extruder
-and a default process. Shared filaments can be checked for several printers;
-nozzle-specific processes can remain exclusive to their matching variants.
-Every member must be assigned before packaging. Unassigned or stale references
-block packaging rather than silently making profiles compatible with everything.
-Existing single-printer defaults remain readable and are preserved when adding a
-second printer. All members, including non-default profiles, are packaged.
+After installing the desktop dependencies, double-click **Start Profile Lab.cmd**
+or run `profilelab-desktop` in the activated environment.
 
-Use the generated **ZIP** for sharing via Orca's Import Configs command, avoiding
-bundle namespaces. Installation uses the existing non-overwriting user-profile
-installer and requires Orca to be closed. Incomplete sets are saved automatically.
-The set editor warns about mixed filament diameters, missing or invalid numeric
-diameter/layer-height values, and layer heights exceeding a nozzle diameter.
-These checks do not certify hardware suitability; temperature limits, motion
-limits, and G-code still require manual review.
+Open **System library** and download the pinned **OrcaSlicer 2.4.2** library.
+It works offline afterward. **Check for updates** reports newer stable GitHub
+releases; it does not replace your library, engine, drafts or sets.
 
-**Create from scratch…** now offers core-setting forms for rectangular, front-left
-origin FFF printers (one or two extruders), filaments, and processes. Required
-values are entered explicitly. Printers require machine-specific start/end G-code;
-dual-extruder printers also require right-extruder offsets. Filaments set nozzle
-and smooth PEI/high-temperature plate temperatures; other plates need review.
-These are starter forms, not the complete Orca settings interface. Omitted values
-use Orca's internal defaults and must be reviewed before printing.
+Search/filter profiles and inspect **Resolved settings** and **Source JSON**.
+The source column identifies which ancestor supplies a setting. Drag the divider
+to resize the list/settings sections. Resolved values include saved ancestor
+settings, not every internal Orca default.
 
-159 tests passed on September 17, including native Orca loading of a multi-printer
-family, a from-scratch dual-extruder set, and comparison with the pinned upstream
-ID generator. Stock 2.4.2 recipient GUI import of the Profile Lab ZIP and restart
-were verified in isolated data folders. No real profiles were changed.
+Generic names do not prove that a record is a hidden template. Creation choices
+exclude non-instantiated templates but retain generic selectable profiles.
+Missing or ambiguous ancestors block resolution rather than silently returning
+incomplete settings.
 
-Double-click **Start Profile Lab.cmd**. This opens the normal app with the real
-public library, saved drafts, packaging, and installation. Do not use Start Demo.cmd;
-that is a separate fictional sandbox, not this presentation.
+## 2. Choose your starting workflow
 
-Use a new draft name for this walkthrough. Earlier installations used a local
-bundle format that stock Orca 2.4.2 cannot reliably re-export. Those existing
-profiles are untouched; new installations use ordinary user profiles instead.
+### A. Customize one library profile as a draft
 
-## End-to-end walkthrough
+1. Select a usable printer, filament or process in **System library**.
+2. Click **Create draft from selected profile…** and give it a unique name.
+3. In **My drafts**, click a value to edit it; setting names stay read-only.
+4. Changes save automatically as overrides and appear in bold. Use **Reset selected
+   setting to starting value** to undo an individual override.
+5. Click **Prepare sharing package…** when ready, and review the included members.
 
-1. Open **System library**. The cached OrcaSlicer 2.4.2 library contains 11,895
-   public records. Search for **Prusa MK3S 0.4 nozzle** and select that printer.
-   Show the resolved settings and the source/parent columns: Profile Lab keeps
-   track of where inherited values come from.
-2. Click **Create draft from selected profile…**. Enter a new name, for example
-   **Workshop MK3S**. The original system profile stays unchanged. Use a different
-   name if that draft already exists.
-3. In **My drafts**, optionally search for **retraction length** and click the
-   value to edit it. Changes save to the draft. This is a workflow demonstration,
-   not a printer calibration; do not print using unverified settings.
-4. Click **Prepare sharing package…**. The review should show one printer,
-   one filament, one process, and supporting parents. Parents preserve the
-   inheritance chain; they are not additional printers selected for the package.
-5. Click **Create package**. It saves automatically using the draft name.
-   Choose installation when prompted. **OrcaSlicer must be closed.** Confirm
-   installation. Existing profiles are not replaced or migrated.
-6. Open OrcaSlicer. Select your newly named printer, then check its filament and
-   process selectors. Expect the Prusa Generic PLA and 0.20mm Speed @MK3S 0.4
-   package copies, with your printer name appended.
-7. Share the **ZIP generated by Profile Lab**, using **Open saved package folder**.
-   The recipient uses Orca's **File → Import → Import Configs**. Select the new
-   printer and check both the filament and process selectors. Do not substitute
-   Orca's `.orca_printer` export: our stock 2.4.2 recipient test imported the files
-   but lost their compatibility links.
+Known boolean fields use On/Off; lists display without JSON syntax. Supported
+draft reference fields use constrained choices; extruder-aware fields use E0/E1
+(and Left/Right for two slots). Numeric checks cover selected settings, not every
+Orca rule. Structured values and some compatibility expressions still need
+specialized editors.
 
-If Orca was open, close it and click **Install prepared package into OrcaSlicer…**
-again. Within the same session, this uses the last created package without asking
-you to locate it. After restarting Profile Lab, select the saved package manually.
-**Open saved package folder** reveals the file for sharing.
+Drafts freeze their starting values/revision; library changes do not alter them.
+**Delete draft…** moves the draft to a recoverable `deleted-drafts` folder after
+confirmation. Saved packages and installed Orca profiles remain intact.
 
-## What has been verified
+For explicit control over every printer, material and process in a package,
+use a profile set rather than relying on a single draft's dependencies.
 
-The normal library/draft/package/install handlers were tested using public Prusa
-data and temporary destinations. The installed native Orca validator loaded every
-profile in the self-contained package, including the supporting parents.
+### B. Build a complete mix-and-match set
 
-On September 17, 2026, stock Orca 2.4.2 imported an eight-profile fictional family:
-Standard and XL printers with 0.4/0.8 variants, one dual-extruder printer, one shared
-filament and two processes. Nozzle switching selected the matching process.
-After importing the Profile Lab ZIP in a separate recipient data folder, the
-selected printer, Lab PLA and Lab Process survived restart.
+Open **My profile sets**, click **New set**, and name it. The wizard saves incomplete
+work automatically. Back/Next let you revisit each stage.
 
-Orca's own bundle export succeeded and contained all three categories, but its
-recipient import did not preserve compatibility. This is why the supported
-sharing route remains Profile Lab's ZIP. Also, printer switching can select
-Generic PLA instead of the assigned default; explicitly check the filament.
+1. **Printers:** choose **Add from library**, **Add from drafts**, or **Create from
+   scratch…**. Filter library choices by vendor, model and nozzle variant.
+   Selecting a record shows its actual ancestry. Name each independent copy.
+2. Add more printers as needed. **Duplicate as variant…** copies a member, then
+   lets you edit its settings. Renaming it “0.8” does not change the nozzle!
+   Review printer model, printer variant, nozzle values, dimensions and extruder
+   settings explicitly. Grouping uses metadata, not name parsing.
+3. **Filaments:** add/copy/create materials, including ones originally associated
+   with another printer. Review physical suitability before assigning them.
+4. **Processes:** add/copy/create processes with settings appropriate to each
+   nozzle and printer variant.
+5. **Assignments and review:** open **Assign profiles and defaults…**. Each printer
+   has its own page. Check its allowed filaments/processes, choose a default
+   filament per extruder, and choose a default process.
+6. Click **Prepare and install…**, review warnings and package contents, then
+   create the package. Accept or decline the subsequent installation prompt.
 
-See `docs/upstream-variant-audit.md` for the pinned development build and the
-separate stable/development results. Development testing does not upgrade the
-production library or certify compatibility with an unreleased 2.5.0 release.
+Example: Standard 0.4, Standard 0.8, XL 0.4 and XL 0.8 can share one PLA profile.
+Assign the 0.4 process only to the 0.4 printers and the 0.8 process only to the 0.8
+printers. Assigned non-default profiles are included too.
 
-This test does not certify print safety, every possible
-vendor profile, or full upstream schema validation. The library remains pinned to
-2.4.2; the separate full-engine check still needs matching source resources.
+Missing defaults, stale references and unassigned members block packaging.
+Supported review warnings cover diameter/layer-height inconsistencies.
+**Remove selected** removes a copy from the set, not its source or installed
+files; repair affected assignments before packaging again. Library-derived
+copies and duplicated variants retain source metadata in the project.
 
-The prepared package carries its parent chain. Installation merges those saved
-parent values into each ordinary user profile and links material/process copies
-to the new printer. Original drafts and library profiles stay unchanged. Orca
-supplies any internal defaults not explicitly saved in the source chain.
+### C. Start from scratch
+
+**Create from scratch…** currently offers basic forms for:
+
+- Rectangular, front-left-origin FFF printers with one or two extruders.
+- Filament material, diameter, flow and supported nozzle/bed temperatures.
+- Process layer heights, walls, infill and basic speeds.
+
+Supply machine-specific start/end G-code and right-extruder offsets for dual
+printers. Other build plates, motion limits, hardware capabilities and omitted
+settings need review in Orca. These are starter forms—not every Orca setting or
+printer architecture. Do not print using fictional test fixtures.
+
+## 3. Prepare, install and verify
+
+Packages save automatically under `%LOCALAPPDATA%\SlicerProfileLab\sharing`,
+using the draft/set name with a unique suffix when needed. Routine creation does
+not ask for a save location.
+
+| File | Purpose |
+| --- | --- |
+| Prepared `.orca_bundle` | Profile Lab's installation input; may retain supporting parents internally |
+| Sharing `.zip` | Send to recipients; self-contained ordinary user profiles |
+
+1. Close Orca before accepting installation. Profile Lab rechecks before writing;
+   unknown process status blocks installation.
+2. Confirm the preview. The current button writes to
+   `%APPDATA%\OrcaSlicer\user\default\machine`, `filament` and `process`.
+3. Name collisions are refused rather than overwritten. Use a new copy name;
+   this is not an installed-profile update/uninstall manager.
+4. Open Orca and select the new **User** printer. Confirm the intended filament
+   and process are available and selected; check both slots on dual printers.
+5. Switch nozzle variants if applicable and check the process again. Orca can
+   choose Generic PLA instead of the assigned default—check the filament explicitly.
+6. Review hardware settings and G-code before printing. Installation success does
+   not certify print safety.
+
+If installation was declined, use **Install prepared package into OrcaSlicer…**
+in **My drafts**. It uses the latest prepared package in the current app session;
+after restarting Profile Lab, select the saved `.orca_bundle` when prompted.
+
+Installation resolves saved ancestor values into independent user profiles with
+empty `inherits`. Source history stays in Profile Lab; recipients do not need
+hidden ancestors installed. Originals stay unchanged. Unsaved Orca internal
+defaults are not frozen into the package.
+
+**Portable/custom Orca:** configurable installation targets are planned. The
+current install button always targets the normal default user folder. Instead,
+import the sharing ZIP through the intended isolated Orca instance.
+
+## 4. Share with another person
+
+1. Find the generated `.zip` in the sharing folder. The draft workflow also
+   offers **Open saved package folder**.
+2. Send that ZIP.
+3. The recipient uses **File → Import → Import Configs** in Orca—not model import.
+4. Select the imported User printer, check filament/process choices, and close
+   and reopen Orca to verify persistence.
+
+**Do not substitute Orca's `.orca_printer` re-export.** In stock 2.4.2 and the
+pinned 2.5.0-dev tests, the bundle files imported but their compatibility links
+were lost. “Imported three configs” alone does not prove the profiles work
+together. Profile Lab's ZIP passed recipient selection and restart checks.
+
+## 5. Check profiles and read the result
+
+In **Check profiles**:
+
+- **Check my OrcaSlicer profiles** targets the normal installed user location.
+- **Choose folder… / Check selected folder** checks a separate profile tree.
+  Standalone checks may report parents that exist outside that tree as missing.
+- **Install Orca engine** obtains the optional official runtime in Profile Lab's
+  private cache, without replacing your Orca installation.
+
+Built-in checks cover JSON structure, names, duplicates, parents and cycles;
+recognized complete system trees receive additional ID/reference checks.
+Read-only validation does not edit profiles and may run while Orca is open.
+
+Read the engine status as well as the built-in summary. Missing engine, startup
+failure or missing matching source resources means full validation did not run.
+Compiled `.opc` files alone cannot replace source JSON. User-profile engine
+checks cover loading/inheritance, not slicing. A missing system parent can mean
+the validation library does not match the source: do not remove inheritance
+merely to silence that message.
+
+Package checks, native loading and print safety are distinct. Review temperatures,
+motion limits, dimensions, filament diameter, extruder mapping and G-code yourself.
+
+## 6. Stable and development testing
+
+The production library remains **2.4.2**. Separate tests used clean **2.5.0-dev**
+at `f520e9221f220657f752d269ead37dd61e9cb0c3`, not a final 2.5.0 release.
+
+The maintainer's **Start Orca 2.5 Test.cmd** expects a specific local build path
+and supplies an isolated `--datadir`. The build is not included in this repository.
+For a separately built Orca, an empty `data_dir` beside `orca-slicer.exe` also
+starts a separate configuration when launching that executable directly.
+An explicit `--datadir` overrides it; subsequent launches reuse the saved data.
+
+Both tested versions support single-extruder nozzle switching. System models can
+show short grouped names; user presets need not use the same display behavior.
+The development legacy-dual fixture has a blank nozzle-control limitation;
+complete new dual/flow-variant UI support is not certified.
+
+As of September 17, 2026, 159 Profile Lab tests passed with optional integrations
+enabled, alongside 55 upstream Python ID tests and 104 native profile tests.
+Profile Lab ZIP recipient selection and restart passed in both tested versions.
+See the [audit](docs/upstream-variant-audit.md) for exact setup, fixture results
+and limitations. This is not coverage of every vendor/hardware configuration.
+
+## Planned next steps—not available yet
+
+- Full settings pages organized like Orca, with comprehensive enums, units,
+  help, limits, structured editors and version-aware schema checks.
+- Broader scratch/family tools and newer dual/flow-variant support.
+- Existing user profiles as direct starting points and broader reference choices.
+- Reviewed library/engine upgrades, version selection, change review and rollback.
+- Easier matched engine/source setup and actionable validation explanations.
+- Portable/cloud-account/custom installation destinations.
+- Package/set cleanup, broader installed-profile management and desktop
+  distribution without Python setup.
+
+Draft deletion and removing a set member already exist; they do not delete
+exported packages or uninstall profiles. There is no general package cleanup or
+uninstall button yet. See the [README](README.md) for the roadmap and current
+limits. No release dates are promised.

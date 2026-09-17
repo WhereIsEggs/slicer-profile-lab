@@ -14,5 +14,8 @@ profiles/
 # Packaging metadata
 *.egg-info/
 
-# Generated demo screenshots and disposable rehearsal artifacts
+# Generated screenshots and disposable validation/build rehearsal artifacts
 artifacts/
+
+# Runtime logs (including Orca's numbered logs)
+*.log
