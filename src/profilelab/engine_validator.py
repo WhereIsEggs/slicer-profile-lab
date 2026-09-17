@@ -5,6 +5,7 @@
 
 from dataclasses import dataclass
 import json
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -23,12 +24,44 @@ def validator_path() -> Path:
     override = os.environ.get("PROFILELAB_ORCA_VALIDATOR")
     if override:
         return Path(override)
+    if getattr(sys, 'frozen', False):
+        # Packaged installations never use the mutable nightly cache.
+        return Path(sys._MEIPASS) / 'orca-engine' / 'OrcaSlicer_profile_validator.exe'
     return engine_home() / "OrcaSlicer_profile_validator.exe"
 
 
 def validation_engine_resources() -> Path:
     """Use the resources shipped with the installed engine, never the editor cache."""
     return validator_path().parent / "resources"
+
+
+def bundled_engine_problem() -> str | None:
+    """Fail closed if a bundled engine or matching resource file was damaged."""
+    if not getattr(sys, 'frozen', False) or os.environ.get('PROFILELAB_ORCA_VALIDATOR'):
+        return None
+    folder = validator_path().parent
+    try:
+        manifest = json.loads((folder / 'engine-manifest.json').read_text(encoding='utf-8'))
+        if not isinstance(manifest, dict):
+            raise ValueError('Invalid engine manifest.')
+        if manifest.get('revision') != manifest.get('resources_revision') or not manifest.get('revision'):
+            raise ValueError('Engine and resources do not have a matching revision.')
+        files = manifest['files']
+        if not isinstance(files, dict):
+            raise ValueError('Invalid engine file list.')
+        if not files.get('OrcaSlicer_profile_validator.exe') or not any(p.startswith('resources/profiles/') for p in files):
+            raise ValueError('Engine manifest is incomplete.')
+        resolved_folder = folder.resolve()
+        for name, expected in files.items():
+            path = folder / name
+            if not path.resolve().is_relative_to(resolved_folder):
+                raise ValueError('Invalid engine manifest path.')
+            with path.open('rb') as stream:
+                if hashlib.file_digest(stream, 'sha256').hexdigest() != expected:
+                    raise ValueError('Engine file did not match its installation: ' + name)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return 'Reinstall Profile Lab to repair its included validation engine. Full validation has not run.\n' + str(error)
+    return None
 
 
 @dataclass(frozen=True)
@@ -64,6 +97,8 @@ def is_runtime_profile_tree(folder: Path) -> bool:
 def run_orca_engine(profile_folder: Path, timeout_seconds: int = 900) -> EngineValidationResult:
     """Validate a copied complete tree so Orca cannot alter the user's files."""
     executable = validator_path()
+    if problem := bundled_engine_problem():
+        return EngineValidationResult('failed', 'The included validation engine needs repair.', problem)
     if not is_complete_profile_tree(profile_folder):
         return EngineValidationResult(
             "not_applicable",
@@ -84,6 +119,8 @@ def run_orca_engine_for_user_profiles(resources: Path, user_profiles: Path,
                                       timeout_seconds: int = 900) -> EngineValidationResult:
     """Overlay a user folder onto trusted system profiles in a disposable workspace."""
     executable = validator_path()
+    if problem := bundled_engine_problem():
+        return EngineValidationResult('failed', 'The included validation engine needs repair.', problem)
     system_profiles = resources / "profiles"
     if not is_runtime_profile_tree(system_profiles) or not user_profiles.is_dir():
         return EngineValidationResult("not_applicable", "A matching system library is not ready for this user-profile check.")
@@ -93,6 +130,16 @@ def run_orca_engine_for_user_profiles(resources: Path, user_profiles: Path,
             "Orca's validator needs matching source profiles. This runtime contains compiled profiles only; full validation has not run.",
             "The portable runtime's .opc files cannot replace the source JSON library in validator mode. Do not substitute an unrelated library version.",
         )
+    # Upstream can skip invalid user presets while exiting successfully. Keep
+    # Profile Lab's structural/dependency gate instead of treating exit zero alone
+    # as proof that every user's profile loaded.
+    from profilelab.validation import validate_user_folder
+    from profilelab.validator import profile_paths
+    if profile_paths(user_profiles):
+        report = validate_user_folder(user_profiles, resources)
+        if not report.is_valid:
+            return EngineValidationResult('failed', 'Your profiles need attention before engine validation.',
+                                          '\n'.join(issue.message for issue in report.issues))
     with TemporaryDirectory(prefix="profilelab-orca-user-check-") as temporary:
         copied_resources = Path(temporary) / "resources"
         copied_tree = copied_resources / "profiles"
@@ -100,7 +147,16 @@ def run_orca_engine_for_user_profiles(resources: Path, user_profiles: Path,
         # Orca may have downloaded newer or additional vendor bundles locally.
         local_system = user_profiles.parent.parent / "system"
         if local_system.is_dir():
-            shutil.copytree(local_system, copied_tree, dirs_exist_ok=True)
+            for item in local_system.iterdir():
+                destination = copied_tree / item.name
+                # Supplement unknown vendors only; do not silently replace the
+                # engine's matching system profiles with another version.
+                if destination.exists():
+                    continue
+                if item.is_dir():
+                    shutil.copytree(item, destination)
+                elif item.is_file():
+                    shutil.copy2(item, destination)
         source_info = resources / "info"
         if source_info.is_dir():
             shutil.copytree(source_info, copied_resources / "info")

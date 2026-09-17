@@ -47,10 +47,12 @@ For unusual distribution arrangements, obtain appropriate legal advice.
 
 ## Optional Orca downloads and generated profiles
 
-The standard installer does not bundle Orca's engine or profile library. If you
-redistribute those separately or change the installer to bundle them, preserve
-their own notices and provide the matching source as required; this project's
-source ZIP is not a substitute for the native Orca engine's source.
+Starting with Alpha 2, the installer bundles a fixed Orca engine and matching
+validation resources. The complete release source ZIP includes `orca-sources/`
+with the corresponding Orca source, dependency archives and build recipes. Share
+that full ZIP, not only the smaller installed `profilelab-source.zip`. Preserve
+the bundled engine's LICENSE.txt and ORCA-ENGINE-NOTICES.md. The optional editor
+library is still downloaded separately.
 
 Profile Lab's license does not automatically apply to independently authored
 profile data simply because the tool generated a JSON or ZIP file. Profiles

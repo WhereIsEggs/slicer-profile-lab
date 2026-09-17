@@ -5,6 +5,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
+import json
 
 from profilelab.loader import InvalidProfileError
 from profilelab.engine_validator import is_complete_profile_tree
@@ -31,6 +32,37 @@ class ValidationReport:
     @property
     def is_valid(self) -> bool:
         return not self.issues
+
+
+def validate_user_folder(profile_folder: Path, resources: Path) -> ValidationReport:
+    """Resolve external parents only when present in a real matching source tree."""
+    report = validate_folder(profile_folder)
+    if not any(issue.kind == 'missing_parent' for issue in report.issues):
+        return report
+    parents = set()
+    roots = [resources / 'profiles', profile_folder.parent.parent / 'system']
+    for root in roots:
+        for path in root.rglob('*.json') if root.is_dir() else []:
+            if root == roots[1] and (roots[0] / path.relative_to(root).parts[0]).exists():
+                continue  # The engine never overwrites its pinned vendor bundles.
+            try:
+                data = json.loads(path.read_text(encoding='utf-8-sig'))
+                if isinstance(data, dict) and isinstance(data.get('name'), str):
+                    parents.add((data.get('type'), data['name']))
+            except (OSError, ValueError):
+                continue  # Never excuse a missing parent using unreadable data.
+    unresolved = []
+    for issue in report.issues:
+        if issue.kind == 'missing_parent' and issue.paths:
+            try:
+                data = json.loads(issue.paths[0].read_text(encoding='utf-8-sig'))
+                if (data.get('type'), data.get('inherits')) in parents:
+                    continue
+            except (OSError, ValueError, TypeError):
+                pass
+        unresolved.append(issue)
+    report.issues = unresolved
+    return report
 
 
 def validate_folder(profile_folder: Path) -> ValidationReport:

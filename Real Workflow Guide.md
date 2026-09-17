@@ -153,8 +153,9 @@ In **Check profiles**:
 - **Check my OrcaSlicer profiles** targets the normal installed user location.
 - **Choose folder… / Check selected folder** checks a separate profile tree.
   Standalone checks may report parents that exist outside that tree as missing.
-- **Install Orca engine** obtains the optional official runtime in Profile Lab's
-  private cache, without replacing your Orca installation.
+- Windows Alpha 2 includes the validator and matching resources, without replacing
+  your Orca installation. No engine download is needed. **Validation engine information**
+  shows its status; future engine updates are delivered with Profile Lab releases.
 
 Built-in checks cover JSON structure, names, duplicates, parents and cycles;
 recognized complete system trees receive additional ID/reference checks.
@@ -209,3 +210,10 @@ Draft deletion and removing a set member already exist; they do not delete
 exported packages or uninstall profiles. There is no general package cleanup or
 uninstall button yet. See the [README](README.md) for the roadmap and current
 limits. No release dates are promised.
+# Updating Profile Lab itself
+
+Open Help → Check for updates and click Check now. No application update checks
+run automatically. If offered, click Download update; Profile Lab verifies the
+download against the release checksum. Open the downloaded installer folder,
+close Profile Lab, and run setup. This is separate from the system-library update
+check. Alpha/beta builds see newer previews; stable builds see stable releases.

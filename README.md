@@ -16,7 +16,7 @@ print safety.
 
 ## Get started
 
-For private Windows x64 alpha testing, use the **0.1.0 Alpha 1 installer** supplied
+For Windows x64 alpha testing, use the **0.1.0 Alpha 2 installer** supplied
 by **WhereIsEggs**. Python is included; no separate development setup is needed.
 The installer is unsigned and is not yet a public GitHub release. See the
 [alpha testing guide](docs/alpha-testing.md) for precautions and testing steps,
@@ -35,8 +35,9 @@ python -m venv .venv
 
 After setup, double-click **Start Profile Lab.cmd**. With the virtual environment
 activated, `profilelab-desktop` works too. No browser or web server is required.
-The desktop extra installs PySide6 and psutil; Orca's optional engine is a separate
-download.
+The desktop extra installs PySide6 and psutil. Windows installers also include a
+fixed Orca validation engine and matching resources; no engine download is needed.
+Source developers must configure a matching validator/resources pair explicitly.
 
 See the [Workflow guide](Real%20Workflow%20Guide.md) for step-by-step instructions.
 The fictional offline sandbox remains an internal regression-test fixture; the
@@ -124,8 +125,9 @@ restart. See the [compatibility audit](docs/upstream-variant-audit.md).
   identity rules are not imposed indiscriminately on ordinary user profiles.
 - **Check my OrcaSlicer profiles** provides an installed-user-profile check path;
   system sources are used privately where available.
-- **Install Orca engine** downloads official nightly assets, verifies published
-  checksums and installs into Profile Lab's private cache.
+- Windows Alpha 2 includes a pinned Orca validator and matching source resources.
+  Engine checks work offline. **Validation engine information** shows its location;
+  engine updates arrive with Profile Lab releases, never a moving nightly download.
 - Background checks distinguish built-in results from unavailable, failed or
   incomplete engine validation. Read-only checks can run while Orca is open.
 
@@ -185,7 +187,7 @@ default; explicitly check filament and process selectors.
 | --- | --- |
 | Library | `%LOCALAPPDATA%\SlicerProfileLab\libraries` |
 | Drafts, sets, packages | `%LOCALAPPDATA%\SlicerProfileLab\drafts`, `sets`, `sharing` |
-| Private engine | `%LOCALAPPDATA%\SlicerProfileLab\engine` |
+| Bundled engine | Installed app's `_internal\orca-engine` (old nightly cache is ignored) |
 | Installation target | `%APPDATA%\OrcaSlicer\user\default` (`machine`, `filament`, `process`) |
 
 ## Command line and tests
@@ -208,3 +210,11 @@ Native, cached-library and pinned-upstream tests are opt-in and may be skipped b
 the ordinary command. See the [audit](docs/upstream-variant-audit.md) for exact
 setup/results. Use fictional or public fixtures; do not commit private profile
 exports, caches or build artifacts.
+
+## Manual application updates
+
+Use **Help → Check for updates → Check now** to check GitHub explicitly.
+Profile Lab never checks for application updates automatically. If a newer
+compatible release is available, download its installer in the app, then open
+the download folder, close Profile Lab and run setup. Downloads are checked
+against the release's SHA256SUMS.txt; installation is never automatic.

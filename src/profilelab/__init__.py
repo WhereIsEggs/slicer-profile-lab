@@ -3,5 +3,5 @@
 # See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
 """Slicer Profile Lab application version."""
 
-__version__ = "0.1.0a1"
-DISPLAY_VERSION = "0.1.0 Alpha 1"
+__version__ = "0.1.0a2"
+DISPLAY_VERSION = "0.1.0 Alpha 2"

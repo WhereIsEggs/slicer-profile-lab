@@ -1,6 +1,6 @@
-# Alpha 1 testing guide
+# Alpha 2 testing guide
 
-Version: **0.1.0 Alpha 1** · Publisher: **WhereIsEggs** · Windows x64
+Version: **0.1.0 Alpha 2** · Publisher: **WhereIsEggs** · Windows x64
 
 Licensed under **AGPL-3.0-only**, without warranty. Copyright (C) 2026 WhereIsEggs
 for original contributions; upstream attribution is in NOTICE.md. The installer
@@ -8,8 +8,9 @@ and matching source ZIP should be shared together. **Help → License and source
 code** provides offline access to the license and installed source location.
 
 This is the real app, packaged with Python and Qt. You do not need Python, a
-development checkout or a locally built Orca to use it. The installer does not
-include Orca, the system profile library, or its optional validator engine.
+development checkout or a locally built Orca to use it. The installer includes
+a fixed Orca validator with matching resources for offline checks. The Orca GUI
+is not included. The editor's separately downloaded system library remains optional.
 
 ## Before testing
 
@@ -38,8 +39,9 @@ include Orca, the system profile library, or its optional validator engine.
   process choices. Review actual values; do not print merely because validation passed.
 - Import the Profile Lab ZIP on another test computer. Select each printer/nozzle,
   confirm the intended materials/processes, and repeat after restarting Orca.
-- Exercise read-only validation. Note built-in results separately from engine status.
-  The optional engine/source setup may report incomplete validation.
+- Exercise read-only validation while offline, including a deliberately missing
+  parent. A missing/damaged engine must report incomplete validation, never a pass.
+  The old nightly engine cache must not be needed or used.
 
 For portable Orca, import the ZIP through that instance. The install button
 currently targets the normal `%APPDATA%\OrcaSlicer\user\default` folder.

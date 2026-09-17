@@ -159,9 +159,9 @@ class DemoTests(unittest.TestCase):
             self.assertEqual(factory.call_args.kwargs["extruder_slots"], key == "default_filament_profile")
 
     def test_demo_install_and_download_are_disabled_even_if_called_directly(self):
-        with patch("profilelab.drafts_view.install_user_profiles") as install, patch("profilelab.desktop.EngineInstallWorker") as download:
+        with patch("profilelab.drafts_view.install_user_profiles") as install, patch("urllib.request.urlopen") as download:
             self.window.drafts.install_package("anything.orca_bundle")
-            self.window.start_engine_install()
+            self.window.show_engine_information()
             self.window.start_user_validation()
             install.assert_not_called()
             download.assert_not_called()

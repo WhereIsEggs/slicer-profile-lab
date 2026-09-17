@@ -14,6 +14,7 @@ import subprocess
 import sys
 import urllib.request
 from source_archive import write_project_source, write_complete_source
+from bundle_engine import stage_engine
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
@@ -33,6 +34,10 @@ def run(command):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--iscc', type=Path, required=True, help='Installed Inno Setup 6 compiler')
+    parser.add_argument('--orca-source', type=Path, required=True, help='Clean pinned Orca source checkout')
+    parser.add_argument('--orca-runtime', type=Path, required=True, help='Reviewed Release runtime directory')
+    parser.add_argument('--orca-dependency-cache', type=Path, action='append', required=True,
+                        help='Source-download cache used by Orca dependency build (repeatable)')
     args = parser.parse_args()
     if sys.platform != 'win32' or sys.maxsize <= 2**32:
         raise SystemExit('Build on 64-bit Windows with 64-bit Python.')
@@ -44,6 +49,10 @@ def main():
     assets = work / 'assets'
     release.mkdir(parents=True)
     (assets / 'docs').mkdir(parents=True)
+    engine_stage = work / 'orca-engine'
+    orca_sources = work / 'orca-sources'
+    engine_info = stage_engine(args.orca_source, args.orca_runtime, engine_stage,
+                               orca_sources, args.orca_dependency_cache)
     for relative in ('README.md', 'Real Workflow Guide.md', 'docs/alpha-testing.md',
                      'docs/upstream-variant-audit.md', 'docs/windows-release.md',
                      'docs/licensing.md', 'LICENSE.txt', 'NOTICE.md'):
@@ -123,28 +132,31 @@ def main():
         dirty = None  # No git history: do not claim this rebuild is unchanged.
     info = dict(version=__version__, built_utc=stamp, python=sys.version,
                 revision=revision, dirty=dirty, license='AGPL-3.0-only',
-                dependencies=dependencies, publisher='WhereIsEggs')
+                dependencies=dependencies, publisher='WhereIsEggs',
+                orca_engine_revision=engine_info['revision'])
     (assets / 'build-info.json').write_text(json.dumps(info, indent=2), encoding='utf-8')
     project_source = assets / 'profilelab-source.zip'
     write_project_source(ROOT, project_source, info)
     release_source = release / f'SlicerProfileLab-{__version__}-source.zip'
-    write_complete_source(project_source, sources, release_source)
+    write_complete_source(project_source, sources, release_source, orca_sources)
     run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--onedir', '--windowed', '--noupx',
          '--additional-hooks-dir', ROOT / 'packaging/hooks',
          '--name', 'SlicerProfileLab', '--paths', ROOT / 'src', '--distpath', release / 'app',
          '--workpath', work / 'pyinstaller', '--specpath', work,
          '--add-data', str(assets) + ';.', ROOT / 'packaging/launch.py'])
     payload = release / 'app' / 'SlicerProfileLab'
+    # Copy after freezing: keep Orca's DLLs isolated from Qt/Python dependency collection.
+    shutil.copytree(engine_stage, payload / '_internal' / 'orca-engine')
     allowed_qt = {'Qt6Core.dll', 'Qt6Gui.dll', 'Qt6Widgets.dll', 'Qt6Network.dll', 'Qt6Svg.dll'}
     collected_qt = {p.name for p in (payload / '_internal' / 'PySide6').glob('Qt6*.dll')}
     if collected_qt - allowed_qt:
         raise RuntimeError('Unreviewed Qt modules collected: ' + str(collected_qt - allowed_qt))
     report = release / 'packaged-smoke.json'
     subprocess.run([str(payload / 'SlicerProfileLab.exe'), '--smoke-test', str(report)],
-                   cwd=release, timeout=60, check=True)
+                   cwd=release, timeout=180, check=True)
     if not json.loads(report.read_text())['passed']:
         raise RuntimeError('Packaged smoke test failed; no installer will be compiled.')
-    run([args.iscc.resolve(), '/DPayloadDir=' + str(payload), '/DReleaseDir=' + str(release),
+    run([args.iscc.resolve(), '/Qp', '/DPayloadDir=' + str(payload), '/DReleaseDir=' + str(release),
          '/DAppVersion=' + __version__, ROOT / 'packaging/installer.iss'])
     setup = release / f'SlicerProfileLab-{__version__}-windows-x64-setup.exe'
     checksums = ''.join(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n'

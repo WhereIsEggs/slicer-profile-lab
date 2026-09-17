@@ -38,8 +38,8 @@ Profile Lab adaptations, documented September 17, 2026:
   Profile Lab's error reporting rather than upstream's command-line workflow.
 - `tests/test_orca_rules.py`: selected upstream identity vectors used as
   compatibility regression tests.
-- The native Orca validator remains a separately downloaded executable,
-  invoked on temporary copies. It is not included in the Profile Lab installer.
+- Starting with Alpha 2, the fixed native Orca validator and matching resources
+  are bundled and invoked on temporary copies. See packaging/ORCA-ENGINE-NOTICES.md.
 
 The optional profile library is drawn from OrcaSlicer 2.4.2, commit
 `8500fcdccaa10b5099ac20d252af3a7c560046f1`. Vendor/profile names and third-party

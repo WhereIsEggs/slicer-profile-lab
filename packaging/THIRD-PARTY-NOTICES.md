@@ -1,8 +1,9 @@
 # Third-party software in the Windows alpha
 
 Publisher of Profile Lab: WhereIsEggs. Profile Lab is not an official OrcaSlicer
-or Qt product. This build does not bundle Orca executables or its profile library;
-the app downloads those separately only when requested.
+or Qt product. Alpha 2 bundles a fixed Orca profile validator and matching validation
+resources, not the Orca GUI. See orca-engine/ORCA-ENGINE-NOTICES.md and its LICENSE.txt.
+The complete release source ZIP includes the matching Orca and dependency sources.
 
 Profile Lab is AGPL-3.0-only; Copyright (C) 2026 WhereIsEggs for original
 contributions. Orca-derived rules and test vectors are attributed in NOTICE.md.

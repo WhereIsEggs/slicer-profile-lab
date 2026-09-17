@@ -33,7 +33,7 @@ def write_project_source(root, target, info):
         archive.writestr('source-manifest.json', json.dumps(manifest, indent=2))
 
 
-def write_complete_source(project_zip, dependency_sources, target):
+def write_complete_source(project_zip, dependency_sources, target, orca_sources=None):
     with zipfile.ZipFile(target, 'w', zipfile.ZIP_DEFLATED) as archive:
         with zipfile.ZipFile(project_zip) as project:
             for name in project.namelist():
@@ -41,3 +41,7 @@ def write_complete_source(project_zip, dependency_sources, target):
         for path in sorted(dependency_sources.iterdir()):
             if path.is_file():
                 archive.write(path, 'dependency-sources/' + path.name)
+        if orca_sources:
+            for path in sorted(orca_sources.iterdir()):
+                if path.is_file():
+                    archive.write(path, 'orca-sources/' + path.name, compress_type=zipfile.ZIP_STORED)

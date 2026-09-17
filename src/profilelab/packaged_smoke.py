@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import traceback
+import sys
 
 
 def run_smoke(report_path):
@@ -17,6 +18,7 @@ def run_smoke(report_path):
             # Set before importing desktop: no reads/writes to the real app cache.
             os.environ['LOCALAPPDATA'] = str(root / 'local')
             os.environ['APPDATA'] = str(root / 'roaming')
+            os.environ.pop('PROFILELAB_ORCA_VALIDATOR', None)
             from PySide6.QtCore import QTimer
             from PySide6.QtWidgets import QApplication
             import psutil
@@ -36,6 +38,16 @@ def run_smoke(report_path):
             window = MainWindow()
             window.show()
             app.processEvents()
+            from unittest.mock import patch
+            from profilelab.update_dialog import UpdateDialog
+            with patch('profilelab.update_dialog.check_update') as update_check:
+                updates = UpdateDialog(window)
+                updates.show()
+                app.processEvents()
+                assert updates.worker is None
+                update_check.assert_not_called()
+                updates.close()
+            report['manual_updates_only'] = True
             data = new_set('Packaged smoke test')
             add_copy(data, 'machine', 'Fictional test printer', {'nozzle_diameter': ['0.4']}, '2.4.2')
             add_copy(data, 'filament', 'Fictional PLA', {'filament_diameter': ['1.75']}, '2.4.2')
@@ -55,6 +67,21 @@ def run_smoke(report_path):
             assert psutil.Process().pid > 0
             report.update(version=__version__, tabs=window.centralWidget().count(),
                           qt_platform=app.platformName(), shared_profiles=3)
+            if getattr(sys, 'frozen', False):
+                from profilelab.engine_validator import run_orca_engine_for_user_profiles, validation_engine_resources
+                from unittest.mock import patch
+                user = root / 'native-user'
+                user.mkdir()
+                with patch('urllib.request.urlopen', side_effect=AssertionError('Offline validation attempted a download')):
+                    engine = run_orca_engine_for_user_profiles(validation_engine_resources(), user, 90)
+                assert engine.status == 'passed', engine.message + '\n' + engine.details
+                report['offline_engine'] = engine.status
+                (user / 'broken.json').write_text(json.dumps({'name': 'Broken test', 'type': 'machine',
+                                                             'inherits': 'Missing smoke-test parent'}))
+                with patch('urllib.request.urlopen', side_effect=AssertionError('Validation attempted a download')):
+                    rejected = run_orca_engine_for_user_profiles(validation_engine_resources(), user, 90)
+                assert rejected.status == 'failed' and 'Missing smoke-test parent' in rejected.details
+                report['broken_parent_rejected'] = True
             QTimer.singleShot(200, app.quit)
             app.exec()
             window.close()

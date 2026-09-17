@@ -5,7 +5,7 @@
   #error ReleaseDir must be supplied by build_windows.py
 #endif
 #ifndef AppVersion
-  #define AppVersion "0.1.0a1"
+  #define AppVersion "0.1.0a2"
 #endif
 
 [Setup]

@@ -16,9 +16,8 @@ from PySide6.QtWidgets import (
 )
 
 from profilelab.orca_status import OrcaStatus, get_orca_status
-from profilelab.validation import validate_folder
-from profilelab.engine_validator import run_orca_engine, run_orca_engine_for_user_profiles, validation_engine_resources
-from profilelab.engine_installer import install_engine
+from profilelab.validation import validate_folder, validate_user_folder
+from profilelab.engine_validator import run_orca_engine, run_orca_engine_for_user_profiles, validation_engine_resources, validator_path
 from profilelab.library import install_validation_resources, library_home
 from profilelab.library_view import LibraryView
 from profilelab.drafts_view import DraftsView
@@ -69,11 +68,9 @@ class ValidationWorker(QThread):
         try:
             report = validate_folder(self.folder)
             if self.user_profiles:
-                # Orca's engine resolves parents from the system library. The local-only
-                # check cannot, so let the engine be authoritative for those references.
-                report.issues = [issue for issue in report.issues if issue.kind != "missing_parent"]
                 self.progress.emit("Preparing a safe copy of your system profiles…")
                 resources = validation_engine_resources()
+                report = validate_user_folder(self.folder, resources)
                 self.progress.emit("Checking your profiles with OrcaSlicer…")
                 engine_result = run_orca_engine_for_user_profiles(resources, self.folder)
             else:
@@ -85,24 +82,10 @@ class ValidationWorker(QThread):
             self.failed.emit(f"The check could not finish ({type(error).__name__}): {error}")
 
 
-class EngineInstallWorker(QThread):
-    progress = Signal(str)
-    installed = Signal(str)
-    failed = Signal(str)
-
-    def run(self):
-        try:
-            installed = install_engine(self.progress.emit)
-            self.installed.emit(str(installed))
-        except Exception as error:
-            self.failed.emit(f"The Orca engine could not be installed: {error}")
-
-
 class MainWindow(QMainWindow):
     def __init__(self, demo_root=None):
         super().__init__()
         self.worker = None
-        self.engine_worker = None
         self.demo_root = Path(demo_root) if demo_root is not None else None
         demo = initialize_demo(self.demo_root) if self.demo_root is not None else None
         self.setWindowTitle(f"Slicer Profile Lab — {DISPLAY_VERSION}")
@@ -119,6 +102,9 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(body)
         layout.setContentsMargins(32, 28, 32, 28)
         help_menu = self.menuBar().addMenu('Help')
+        if not demo:
+            update_action = help_menu.addAction('Check for updates…')
+            update_action.triggered.connect(self.show_app_updates)
         legal_action = help_menu.addAction('License and source code')
         legal_action.triggered.connect(lambda: show_legal_information(self))
         if not demo:
@@ -171,8 +157,8 @@ class MainWindow(QMainWindow):
         self.check_my_profiles = QPushButton("Check my OrcaSlicer profiles")
         self.check_my_profiles.clicked.connect(self.start_user_validation)
         row.addWidget(self.check_my_profiles)
-        self.install_engine = QPushButton("Install Orca engine")
-        self.install_engine.clicked.connect(self.start_engine_install)
+        self.install_engine = QPushButton("Validation engine information")
+        self.install_engine.clicked.connect(self.show_engine_information)
         row.addWidget(self.install_engine)
         row.addStretch()
         refresh = QPushButton("Check OrcaSlicer status")
@@ -221,6 +207,10 @@ class MainWindow(QMainWindow):
             if self.library.matches:
                 self.library.table.selectRow(0)
             self.library.panel_splitter.setSizes([140, 380])
+
+    def show_app_updates(self):
+        from profilelab.update_dialog import UpdateDialog
+        UpdateDialog(self).exec()
 
     def check_demo_example(self, name):
         if self.demo_root is None or self.worker is not None:
@@ -296,40 +286,20 @@ class MainWindow(QMainWindow):
         self.worker.finished.connect(self.finish_validation)
         self.worker.start()
 
-    def start_engine_install(self):
+    def show_engine_information(self):
         if self.demo_root is not None:
             return
-        if self.engine_worker is not None:
-            return
-        answer = QMessageBox.question(
-            self,
-            "Install Orca engine",
-            "Profile Lab will download about 252 MB from OrcaSlicer's official GitHub release. "
-            "It verifies published checksums and installs the files only in Profile Lab's private folder. "
-            "It will not change OrcaSlicer or your profiles. Continue?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if answer != QMessageBox.StandardButton.Yes:
-            return
-        self.install_engine.setEnabled(False)
-        self.results.clear()
-        self.summary.setText("Preparing the Orca engine installation…")
-        self.engine_worker = EngineInstallWorker(self)
-        self.engine_worker.progress.connect(self.summary.setText)
-        self.engine_worker.installed.connect(self.show_engine_installed)
-        self.engine_worker.failed.connect(self.show_failure)
-        self.engine_worker.finished.connect(self.finish_engine_install)
-        self.engine_worker.start()
-
-    def show_engine_installed(self, installed):
-        self.summary.setText("Orca engine installed and ready for profile checks.")
-        self.results.setPlainText("The optional Orca engine was installed in Profile Lab's private folder.\n" + installed)
-
-    def finish_engine_install(self):
-        self.engine_worker.deleteLater()
-        self.engine_worker = None
-        self.install_engine.setEnabled(True)
+        executable = validator_path()
+        if executable.is_file():
+            message = ('The Orca validation engine is ready. Profile checks use a private copy of '
+                       'the matching resources and never change your profiles.\n\n'
+                       'Packaged engine updates are delivered with Profile Lab updates.\n\n' + str(executable))
+        else:
+            message = ('The included validation engine is missing. Reinstall this version of Profile Lab '
+                       'to repair it. Built-in checks remain available, but full validation has not run.\n\n'
+                       'Developers running from source can configure PROFILELAB_ORCA_VALIDATOR '
+                       'with a tested engine and matching resources.')
+        QMessageBox.information(self, 'Validation engine', message)
 
     def show_report(self, result):
         report, engine = result
@@ -374,7 +344,7 @@ class MainWindow(QMainWindow):
         self.check_my_profiles.setEnabled(True)
 
     def closeEvent(self, event):
-        if self.worker is not None or self.engine_worker is not None or self.library.worker is not None or self.library.update_worker is not None:
+        if self.worker is not None or self.library.worker is not None or self.library.update_worker is not None:
             self.summary.setText("Please wait for the check to finish before closing.")
             if self.library.worker is not None:
                 self.library.status.setText("Please wait for the download to finish before closing.")

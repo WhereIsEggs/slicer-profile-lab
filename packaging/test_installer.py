@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('installer', type=Path)
+    parser.add_argument('--previous-installer', type=Path, help='Optional Alpha 1 installer for an upgrade check')
     args = parser.parse_args()
     key = r'Software\Microsoft\Windows\CurrentVersion\Uninstall\{2F601791-C674-48F3-A66A-42D84CC0E178}_is1'
     try:
@@ -30,14 +31,17 @@ def main():
     assert app.is_relative_to(parent.resolve())
     environment = os.environ.copy()
     environment['PATH'] = str(Path(os.environ['SystemRoot']) / 'System32')
-    for name in ('PYTHONPATH', 'PYTHONHOME'):
+    for name in ('PYTHONPATH', 'PYTHONHOME', 'PROFILELAB_ORCA_VALIDATOR'):
         environment.pop(name, None)
 
     def run(arguments):
-        subprocess.run([str(p) for p in arguments], check=True, timeout=120,
+        subprocess.run([str(p) for p in arguments], check=True, timeout=600,
                        env=environment, creationflags=subprocess.CREATE_NO_WINDOW)
 
     try:
+        if args.previous_installer:
+            run([args.previous_installer.resolve(), '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
+                 '/NOICONS', '/TASKS=', '/DIR=' + str(app), '/LOG=' + str(sandbox / 'previous-install.log')])
         for stage in ('install', 'reinstall'):
             run([args.installer.resolve(), '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
                  '/NOICONS', '/TASKS=', '/DIR=' + str(app), '/LOG=' + str(sandbox / (stage + '.log'))])
