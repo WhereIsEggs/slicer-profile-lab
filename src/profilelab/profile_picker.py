@@ -5,7 +5,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
-    QDialogButtonBox, QCheckBox)
+    QDialogButtonBox, QCheckBox, QTreeWidget, QTreeWidgetItem)
 from profilelab.choice_combo import ChoiceComboBox as QComboBox
 
 
@@ -17,6 +17,7 @@ class ProfilePicker(QDialog):
         self.selected_records = []
         self.multi = multi
         self.checked = set()
+        self.set_data = set_data or {}
         from profilelab.recommendations import recommendation
         self.reasons = {id(r): recommendation(r, set_data or {}, recommendation_records or records) for r in records}
         self.setWindowTitle('Add from library')
@@ -52,6 +53,10 @@ class ProfilePicker(QDialog):
         self.recommended.setEnabled(bool(set_data and set_data.get('profiles')))
         self.recommended.toggled.connect(self.filter)
         layout.addWidget(self.recommended)
+        self.group_families = QCheckBox('Group filament families — expand to inspect exact profiles')
+        self.group_families.setChecked(True)
+        self.group_families.toggled.connect(self.filter)
+        layout.addWidget(self.group_families)
         hint = QLabel('Check several filaments or processes; printers are added one at a time. '
                       'Recommendations explain existing links or diameter matches, not print safety. Other choices remain available.')
         hint.setWordWrap(True)
@@ -69,6 +74,13 @@ class ProfilePicker(QDialog):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         layout.addWidget(self.table)
+        self.family_tree = QTreeWidget()
+        self.family_tree.setHeaderLabels(['Material family / exact profile', 'Vendor', 'Selection guidance'])
+        self.family_tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.family_tree.header().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.family_tree.setAlternatingRowColors(True)
+        self.family_tree.itemChanged.connect(self.family_checked)
+        layout.addWidget(self.family_tree)
         self.details = QLabel('Select a profile to see its source and inherited settings.')
         self.details.setWordWrap(True)
         self.details.setTextFormat(Qt.TextFormat.PlainText)
@@ -164,6 +176,67 @@ class ProfilePicker(QDialog):
         self.update_selection_count()
         self.count.setText('Choose Printers, Filaments, or Processes to begin.' if not kind else
                            f'{len(self.matches)} profiles found' if self.matches else 'No matches. Try another search or vendor.')
+        grouped = self.multi and kind == 'filament' and self.group_families.isChecked()
+        self.group_families.setVisible(self.multi and kind == 'filament')
+        self.table.setVisible(not grouped)
+        self.family_tree.setVisible(grouped)
+        if grouped:
+            self.render_families()
+
+    def render_families(self):
+        from profilelab.library_choices import filament_families, family_label, matching_variants
+        self.family_tree.blockSignals(True)
+        self.family_tree.clear()
+        groups = filament_families(self.matches)
+        full_groups = {id(r): family for family in filament_families([r for r in self.records if r['type'] == 'filament']) for r in family}
+        for records in groups:
+            targets = matching_variants(full_groups[id(records[0])], self.set_data) & {id(r) for r in records}
+            parent = QTreeWidgetItem([f'{family_label(records)} · {len(records)} profiles', records[0].get('vendor', ''),
+                                     f'{len(targets)} explicitly linked variants; expand to review' if targets else 'Expand and choose variants manually'])
+            parent.setData(0, Qt.ItemDataRole.UserRole, list(targets))
+            parent.setFlags(parent.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+            self.family_tree.addTopLevelItem(parent)
+            if targets:
+                parent.setFlags(parent.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                selected = targets & self.checked
+                parent.setCheckState(0, Qt.CheckState.Checked if selected == targets else Qt.CheckState.PartiallyChecked if selected else Qt.CheckState.Unchecked)
+            for record in records:
+                child = QTreeWidgetItem([record['name'], record.get('vendor', ''), '; '.join(self.reasons[id(record)]) or 'Manual review'])
+                child.setData(0, Qt.ItemDataRole.UserRole, id(record))
+                child.setFlags(child.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+                child.setToolTip(0, 'Exact profile: ' + record['name'] + '\nSource chain: ' + ' → '.join(record.get('source_chain', [])))
+                child.setToolTip(2, child.text(2))
+                parent.addChild(child)
+                if not record.get('source_error'):
+                    child.setFlags(child.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                    child.setCheckState(0, Qt.CheckState.Checked if id(record) in self.checked else Qt.CheckState.Unchecked)
+            parent.setExpanded(bool(self.search.text()))
+        self.family_tree.blockSignals(False)
+        self.count.setText(f'{len(groups)} material families · {len(self.matches)} exact profiles')
+
+    def family_checked(self, item, column):
+        if column != 0:
+            return
+        target = item.data(0, Qt.ItemDataRole.UserRole)
+        ids = set(target) if isinstance(target, list) else {target}
+        if item.checkState(0) == Qt.CheckState.Checked:
+            self.checked.update(ids)
+        else:
+            self.checked.difference_update(ids)
+        # Synchronize children/parent states without rebuilding the active item.
+        self.family_tree.blockSignals(True)
+        for i in range(self.family_tree.topLevelItemCount()):
+            parent = self.family_tree.topLevelItem(i)
+            targets = set(parent.data(0, Qt.ItemDataRole.UserRole))
+            if targets:
+                chosen = targets & self.checked
+                parent.setCheckState(0, Qt.CheckState.Checked if chosen == targets else Qt.CheckState.PartiallyChecked if chosen else Qt.CheckState.Unchecked)
+            for j in range(parent.childCount()):
+                child = parent.child(j)
+                if child.flags() & Qt.ItemFlag.ItemIsUserCheckable:
+                    child.setCheckState(0, Qt.CheckState.Checked if child.data(0, Qt.ItemDataRole.UserRole) in self.checked else Qt.CheckState.Unchecked)
+        self.family_tree.blockSignals(False)
+        self.update_selection_count()
 
     def selection_changed(self):
         multiple = self.multi and self.category.currentData() in ('filament', 'process')

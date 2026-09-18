@@ -236,3 +236,15 @@ evaluated by these suggestions. Review temperatures, nozzle suitability and G-co
 Assignments decide which profiles are available to each printer. Defaults select
 the initial filament per extruder and process; they do not remove other choices.
 Package review shows these links and initial selections alongside package contents.
+
+### Filament families
+
+The set picker groups filaments by their source vendor and explicit filament ID.
+Expand a material family to inspect its exact profiles, including legacy base-named
+entries. No files are removed and grouping never changes inheritance or JSON names.
+The family checkbox selects visible variants with explicit links to your set's
+printers, preferring narrower printer lists over broad legacy lists. Diameter-only
+recommendations are not automatically selected. Without explicit links, expand the
+family and check variants manually. Turn off Group filament families for the flat
+list. These are selection suggestions, not a guarantee of Orca's runtime switching
+or hardware suitability; review the package assignments before installing.
