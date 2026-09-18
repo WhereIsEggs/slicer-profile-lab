@@ -22,6 +22,7 @@ from profilelab.profile_picker import ProfilePicker
 from profilelab.set_assignments import AssignmentsDialog
 from profilelab.profile_sets import assignment_map
 from profilelab.choice_combo import ChoiceComboBox as QComboBox, choose_text
+from profilelab.library_choices import selectable_library_records
 
 
 class ProfileSetsView(QWidget):
@@ -160,6 +161,8 @@ class ProfileSetsView(QWidget):
         if self.data is None:
             raise ValueError('Create or open a set first.')
         recommendation_records = records
+        if library:
+            records = selectable_library_records(records)
         if self.current_kind():
             records = [r for r in records if r['type'] == self.current_kind()]
         labels = [f"{i+1}. {p['name']} — {p['type']} ({p.get('vendor', 'draft')})" for i, p in enumerate(records)]
