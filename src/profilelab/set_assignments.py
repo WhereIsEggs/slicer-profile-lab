@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QTabWidget, QWidget,
     QListWidget, QListWidgetItem, QComboBox, QFormLayout, QDialogButtonBox, QScrollArea)
 from profilelab.profile_sets import assignment_map
+from profilelab.choice_combo import ChoiceComboBox as QComboBox
 
 
 class AssignmentsDialog(QDialog):

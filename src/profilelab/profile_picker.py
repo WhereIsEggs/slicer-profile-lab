@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     QDialogButtonBox)
+from profilelab.choice_combo import ChoiceComboBox as QComboBox
 
 
 class ProfilePicker(QDialog):
@@ -24,6 +25,7 @@ class ProfilePicker(QDialog):
             self.category.addItem(title, kind)
         filters.addWidget(self.category)
         self.vendor = QComboBox()
+        self.vendor.setAccessibleName('Choose a vendor')
         self.vendor.addItem('All vendors', '')
         filters.addWidget(self.vendor)
         self.search = QLineEdit()
@@ -33,8 +35,10 @@ class ProfilePicker(QDialog):
         layout.addLayout(filters)
         variants = QHBoxLayout()
         self.model = QComboBox()
+        self.model.setAccessibleName('Choose a printer model')
         self.model.addItem('All printer models', '')
         self.nozzle = QComboBox()
+        self.nozzle.setAccessibleName('Choose a nozzle variant')
         self.nozzle.addItem('All nozzle variants', '')
         variants.addWidget(self.model, 1)
         variants.addWidget(self.nozzle, 1)

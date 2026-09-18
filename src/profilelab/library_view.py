@@ -15,6 +15,7 @@ from profilelab.library import VERSION, install_snapshot, library_home, read_sna
 from profilelab.resolver import ProfileResolver, ResolutionError
 from profilelab.drafts import create_draft, drafts_home
 from profilelab.setting_editor import display_value
+from profilelab.choice_combo import ChoiceComboBox as QComboBox
 
 TYPE_LABELS = {"machine": "Printer", "machine_model": "Printer model", "filament": "Filament", "process": "Process"}
 

@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QLabel, QLineE
     QComboBox, QPlainTextEdit, QDialogButtonBox, QMessageBox, QScrollArea, QWidget)
 from profilelab.scratch_profiles import scratch_values
 from profilelab.profile_install import _safe_name
+from profilelab.choice_combo import ChoiceComboBox as QComboBox
 
 
 class ScratchDialog(QDialog):

@@ -21,6 +21,7 @@ from profilelab.library import VERSION
 from profilelab.profile_picker import ProfilePicker
 from profilelab.set_assignments import AssignmentsDialog
 from profilelab.profile_sets import assignment_map
+from profilelab.choice_combo import ChoiceComboBox as QComboBox, choose_text
 
 
 class ProfileSetsView(QWidget):
@@ -172,7 +173,7 @@ class ProfileSetsView(QWidget):
                 return
             record = picker.selected_record
         else:
-            label, ok = QInputDialog.getItem(self, 'Choose a profile to copy', 'All choices are allowed; review suitability before printing.', labels, 0, False)
+            label, ok = choose_text(self, 'Choose a profile to copy — review suitability before printing', labels)
             if not ok:
                 return
             record = records[labels.index(label)]

@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit, QScrollArea, QVBoxLayout, QWidget,
 )
 from profilelab.setting_types import BOOLEAN_KEYS
+from profilelab.choice_combo import ChoiceComboBox as QComboBox
 
 # Narrow, explicitly supported input checks. These are not a complete Orca schema.
 NUMERIC_BOUNDS = {
