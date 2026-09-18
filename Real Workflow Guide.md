@@ -217,3 +217,22 @@ run automatically. If offered, click Download update; Profile Lab verifies the
 download against the release checksum. Open the downloaded installer folder,
 close Profile Lab, and run setup. This is separate from the system-library update
 check. Alpha/beta builds see newer previews; stable builds see stable releases.
+
+## Selecting several profiles and reviewing recommendations
+
+In a set's Filaments or Processes step, use Add from library (or Add from drafts)
+and check several profiles. Checked choices survive searches and vendor filters;
+switching category clears them. Printers remain single-selection per addition.
+Batch additions show a scrollable name review and create independent copies only
+after confirmation. No defaults are chosen automatically.
+
+Recommended choices appear first; Recommended only narrows the list. Reasons use
+explicit printer/process links, original defaults, or matching filament diameters.
+Printer diameter may be inferred from an unambiguous original default filament;
+nozzle size is never used as filament diameter. Missing metadata yields no
+recommendation, not a claim of incompatibility. Orca condition expressions are not
+evaluated by these suggestions. Review temperatures, nozzle suitability and G-code.
+
+Assignments decide which profiles are available to each printer. Defaults select
+the initial filament per extruder and process; they do not remove other choices.
+Package review shows these links and initial selections alongside package contents.

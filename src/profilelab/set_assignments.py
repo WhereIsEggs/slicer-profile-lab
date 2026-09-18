@@ -17,7 +17,10 @@ class AssignmentsDialog(QDialog):
         self.pages = []
         self.assignments = None
         layout = QVBoxLayout(self)
-        note = QLabel('Check which materials and processes belong to each printer, then choose its defaults. A profile can support several printers. Unchecked profiles will not be linked to that printer.')
+        note = QLabel('1. Check the filaments and processes you want available for each printer. '
+                      '2. Choose which ones Orca should select initially (defaults). '
+                      'Defaults do not remove the other assigned choices. A profile can belong to several printers; '
+                      'unchecked profiles will not be linked. Recommendations never assign profiles automatically.')
         note.setWordWrap(True)
         layout.addWidget(note)
         tabs = QTabWidget()
@@ -27,7 +30,7 @@ class AssignmentsDialog(QDialog):
             choice = saved.get(printer['name'], {})
             body = QWidget()
             form = QFormLayout(body)
-            form.addRow(QLabel('Nozzles: ' + ' / '.join(printer.get('nozzle_diameter', [])) + ' mm'))
+            form.addRow(QLabel('Nozzles by extruder: ' + ' · '.join(f'E{i}: {v} mm' for i, v in enumerate(printer.get('nozzle_diameter', [])))))
             lists = {}
             for field, kind in [('filaments', 'filament'), ('processes', 'process')]:
                 widget = QListWidget()
@@ -45,7 +48,7 @@ class AssignmentsDialog(QDialog):
             for i in range(len(printer.get('nozzle_diameter', []))):
                 combo = QComboBox()
                 slots.append(combo)
-                label = ('E0 / Left', 'E1 / Right')[i] if i < 2 else f'E{i}'
+                label = ('E0 / Left', 'E1 / Right')[i] if len(printer.get('nozzle_diameter', [])) == 2 else f'E{i}'
                 form.addRow('Default filament — ' + label, combo)
             process = QComboBox()
             form.addRow('Default process', process)

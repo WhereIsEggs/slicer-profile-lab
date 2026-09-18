@@ -42,6 +42,24 @@ class PackagePreview(QDialog):
                 item.addChild(QTreeWidgetItem([name]))
             item.setExpanded(group != "Supporting parents")
         layout.addWidget(self.tree, 1)
+        links = QTreeWidgetItem(['Printer assignments and initial selections'])
+        self.tree.addTopLevelItem(links)
+        for printer in profiles:
+            if printer['type'] != 'machine' or printer.get('instantiation') == 'false':
+                continue
+            node = QTreeWidgetItem([printer['name'] + ' — nozzles: ' + ' / '.join(map(str, printer.get('nozzle_diameter', []))) + ' mm'])
+            links.addChild(node)
+            for kind, title in [('filament', 'Available filaments'), ('process', 'Available processes')]:
+                group = QTreeWidgetItem([title])
+                node.addChild(group)
+                for profile in profiles:
+                    if profile['type'] == kind and printer['name'] in profile.get('compatible_printers', []):
+                        group.addChild(QTreeWidgetItem([profile['name']]))
+            defaults = printer.get('default_filament_profile', [])
+            for i, name in enumerate(defaults if isinstance(defaults, list) else [defaults]):
+                node.addChild(QTreeWidgetItem([f'Initial filament E{i}: {name}']))
+            node.addChild(QTreeWidgetItem(['Initial process: ' + str(printer.get('default_print_profile', 'Not selected'))]))
+        links.setExpanded(True)
         explanation = QLabel("Supporting parents preserve inherited settings; they are not extra printers you chose. "
                              "Package structure has been checked. Full Orca validation and print quality are not certified.")
         explanation.setWordWrap(True)

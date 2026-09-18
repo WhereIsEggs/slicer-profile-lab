@@ -7,7 +7,7 @@ from pathlib import Path
 from uuid import uuid4
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QComboBox, QListWidget, QInputDialog, QMessageBox, QDialog, QTableWidget,
-    QTableWidgetItem, QHeaderView, QAbstractItemView, QTabBar)
+    QTableWidgetItem, QHeaderView, QAbstractItemView, QTabBar, QDialogButtonBox)
 from profilelab.profile_sets import sets_home, new_set, save_set, load_sets, add_copy, prepare_set, review_set
 from profilelab.library import read_snapshot, library_home
 from profilelab.resolver import ProfileResolver, ResolutionError
@@ -159,24 +159,64 @@ class ProfileSetsView(QWidget):
     def add(self, records, library=False):
         if self.data is None:
             raise ValueError('Create or open a set first.')
+        recommendation_records = records
         if self.current_kind():
             records = [r for r in records if r['type'] == self.current_kind()]
         labels = [f"{i+1}. {p['name']} — {p['type']} ({p.get('vendor', 'draft')})" for i, p in enumerate(records)]
         if not labels:
             raise ValueError('No profiles are available in this source yet.')
-        if library:
-            picker = ProfilePicker(records, self)
+        if library or self.current_kind() in ('filament', 'process'):
+            picker = ProfilePicker(records, self, multi=True, set_data=self.data, recommendation_records=recommendation_records)
             if self.current_kind():
                 picker.category.setCurrentIndex(picker.category.findData(self.current_kind()))
                 picker.category.setEnabled(False)
             if picker.exec() != QDialog.DialogCode.Accepted:
                 return
-            record = picker.selected_record
+            selected = picker.selected_records
         else:
             label, ok = choose_text(self, 'Choose a profile to copy — review suitability before printing', labels)
             if not ok:
                 return
             record = records[labels.index(label)]
+            selected = [record]
+        if len(selected) > 1:
+            preview = deepcopy(self.data)
+            for record in selected:
+                name = f"{record['name']} - {self.data['name']}"
+                base, number = name, 2
+                while any(p['type'] == record['type'] and p['name'].casefold() == name.casefold() for p in preview['profiles']):
+                    name = f'{base} ({number})'
+                    number += 1
+                values, version = record['resolve']()
+                source = dict(name=record['name'], vendor=record.get('vendor', ''), path=record.get('path', ''),
+                              chain=record.get('source_chain', []), revision=record.get('source_revision', ''), version=version)
+                add_copy(preview, record['type'], name, values, version, source=source)
+            added = preview['profiles'][len(self.data['profiles']):]
+            confirmation = QDialog(self)
+            confirmation.setWindowTitle('Review selected copies')
+            confirmation.resize(650, 440)
+            layout = QVBoxLayout(confirmation)
+            note = QLabel('Create these independent copies? Names include your set name; duplicates receive a number. '
+                          'Next, confirm printer links in Assign profiles and defaults. No defaults are chosen automatically.')
+            note.setWordWrap(True)
+            layout.addWidget(note)
+            names = QListWidget()
+            names.addItems([p['name'] for p in added])
+            layout.addWidget(names)
+            buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+            buttons.button(QDialogButtonBox.StandardButton.Save).setText(f'Add {len(added)} copies')
+            buttons.accepted.connect(confirmation.accept)
+            buttons.rejected.connect(confirmation.reject)
+            layout.addWidget(buttons)
+            if confirmation.exec() != QDialog.DialogCode.Accepted:
+                return
+            save_set(self.root, preview)
+            self.data = preview
+            self.reload()
+            self.saved.setCurrentIndex(next(i + 1 for i, d in enumerate(self.sets) if d['id'] == self.data['id']))
+            self.render()
+            return
+        record = selected[0]
         name, ok = QInputDialog.getText(self, 'Name your independent copy', 'Profile name:', text=f"{record['name']} - {self.data['name']}")
         if ok:
             values, version = record['resolve']()
@@ -206,6 +246,7 @@ class ProfileSetsView(QWidget):
                     continue
                 values = {k: deepcopy(v.value) for k, v in resolved.items()}
                 records.append({**p,
+                    'values': values,
                     'source_revision': snapshot['metadata']['revision'],
                     'model': str(values.get('printer_model', '')) if p['type'] == 'machine' else '',
                     'variant': str(values.get('printer_variant', '')) if p['type'] == 'machine' else '',
@@ -232,7 +273,7 @@ class ProfileSetsView(QWidget):
         drafts, errors = load_drafts(drafts_home())
         if errors:
             raise ValueError('Some drafts could not be read. Resolve them in My drafts first.')
-        self.add([{**d, 'resolve': lambda d=d: ({**deepcopy(d['base_values']), **deepcopy(d['overrides'])}, d['library']['version'])} for d in drafts])
+        self.add([{**d, 'values': {**deepcopy(d['base_values']), **deepcopy(d['overrides'])}, 'resolve': lambda d=d: ({**deepcopy(d['base_values']), **deepcopy(d['overrides'])}, d['library']['version'])} for d in drafts])
 
     def remove(self):
         row = self.selected_index()

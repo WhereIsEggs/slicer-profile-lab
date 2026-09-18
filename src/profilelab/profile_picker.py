@@ -5,15 +5,20 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
-    QDialogButtonBox)
+    QDialogButtonBox, QCheckBox)
 from profilelab.choice_combo import ChoiceComboBox as QComboBox
 
 
 class ProfilePicker(QDialog):
-    def __init__(self, records, parent=None):
+    def __init__(self, records, parent=None, *, multi=False, set_data=None, recommendation_records=None):
         super().__init__(parent)
         self.records = records
         self.selected_record = None
+        self.selected_records = []
+        self.multi = multi
+        self.checked = set()
+        from profilelab.recommendations import recommendation
+        self.reasons = {id(r): recommendation(r, set_data or {}, recommendation_records or records) for r in records}
         self.setWindowTitle('Add from library')
         self.resize(850, 560)
         layout = QVBoxLayout(self)
@@ -43,10 +48,19 @@ class ProfilePicker(QDialog):
         variants.addWidget(self.model, 1)
         variants.addWidget(self.nozzle, 1)
         layout.addLayout(variants)
+        self.recommended = QCheckBox('Recommended only — based on this set')
+        self.recommended.setEnabled(bool(set_data and set_data.get('profiles')))
+        self.recommended.toggled.connect(self.filter)
+        layout.addWidget(self.recommended)
+        hint = QLabel('Check several filaments or processes; printers are added one at a time. '
+                      'Recommendations explain existing links or diameter matches, not print safety. Other choices remain available.')
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
         self.count = QLabel()
         layout.addWidget(self.count)
-        self.table = QTableWidget(0, 2)
-        self.table.setHorizontalHeaderLabels(['Profile', 'Vendor'])
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels(['Profile', 'Vendor', 'Recommendation / why'])
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self.table.verticalHeader().hide()
@@ -72,12 +86,14 @@ class ProfilePicker(QDialog):
         self.nozzle.currentIndexChanged.connect(self.filter)
         self.search.textChanged.connect(self.filter)
         self.table.itemSelectionChanged.connect(self.selection_changed)
+        self.table.itemChanged.connect(self.check_changed)
         self.table.cellDoubleClicked.connect(lambda *_: self.accept_selected())
         self.filter()
         self.model.hide()
         self.nozzle.hide()
 
     def category_changed(self):
+        self.checked.clear()
         self.vendor.blockSignals(True)
         self.vendor.clear()
         self.vendor.addItem('All vendors', '')
@@ -116,6 +132,7 @@ class ProfilePicker(QDialog):
         self.filter()
 
     def filter(self):
+        self.table.blockSignals(True)
         self.selected_record = None
         self.choose.setEnabled(False)
         self.table.setRowCount(0)
@@ -127,34 +144,75 @@ class ProfilePicker(QDialog):
                                and (not vendor or p.get('vendor') == vendor)
                                and (kind != 'machine' or not model or p.get('model') == model)
                                and (kind != 'machine' or not variant or p.get('variant') == variant)
+                               and (not self.recommended.isChecked() or self.reasons[id(p)])
                                and all(t in (p['name'] + ' ' + p.get('vendor', '')).casefold() for t in terms)),
-                              key=lambda p: (p['name'].casefold(), p.get('vendor', '').casefold(), p.get('path', '')))
+                              key=lambda p: (not bool(self.reasons[id(p)]), p['name'].casefold(), p.get('vendor', '').casefold(), p.get('path', '')))
         self.table.setRowCount(len(self.matches))
         for row, p in enumerate(self.matches):
             item = QTableWidgetItem(p['name'])
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
             item.setToolTip(p.get('path', p['name']))
+            if self.multi and kind in ('filament', 'process') and not p.get('source_error'):
+                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                item.setCheckState(Qt.CheckState.Checked if id(p) in self.checked else Qt.CheckState.Unchecked)
             self.table.setItem(row, 0, item)
             self.table.setItem(row, 1, QTableWidgetItem(p.get('vendor', '')))
+            reason = QTableWidgetItem('; '.join(self.reasons[id(p)]) or 'No verified recommendation — manual review')
+            reason.setToolTip(reason.text())
+            self.table.setItem(row, 2, reason)
+        self.table.blockSignals(False)
+        self.update_selection_count()
         self.count.setText('Choose Printers, Filaments, or Processes to begin.' if not kind else
                            f'{len(self.matches)} profiles found' if self.matches else 'No matches. Try another search or vendor.')
 
     def selection_changed(self):
-        self.choose.setEnabled(bool(self.table.selectedItems()))
+        multiple = self.multi and self.category.currentData() in ('filament', 'process')
+        if multiple:
+            self.update_selection_count()
+        else:
+            self.choose.setEnabled(bool(self.table.selectedItems()))
         row = self.table.currentRow()
         if self.table.selectedItems() and 0 <= row < len(self.matches):
             p = self.matches[row]
             if p.get('source_error'):
-                self.choose.setEnabled(False)
+                if not multiple:
+                    self.choose.setEnabled(False)
                 self.details.setText('This profile has an unresolved source: ' + p['source_error'])
                 return
             chain = p.get('source_chain', [])
             ancestry = ' → '.join(chain) if chain else 'No source chain available.'
             self.details.setText(f"{p['name']}\nSource: {p.get('vendor', '')}\n"
                                  f"Inheritance (base → selected): {ancestry}\n"
-                                 'Your copy includes inherited values. Original library files stay unchanged.')
+                                 'Your copy includes inherited values. Original library files stay unchanged.\n'
+                                 + '; '.join(self.reasons[id(p)]))
 
     def accept_selected(self):
+        if self.multi and self.category.currentData() in ('filament', 'process'):
+            self.selected_records = [r for r in self.records if id(r) in self.checked and not r.get('source_error')]
+            if self.selected_records:
+                self.selected_record = self.selected_records[0]
+                self.accept()
+            return
         row = self.table.currentRow()
         if self.choose.isEnabled() and self.table.selectedItems() and 0 <= row < len(self.matches):
             self.selected_record = self.matches[row]
+            self.selected_records = [self.selected_record]
             self.accept()
+
+    def check_changed(self, item):
+        if item.column() != 0 or not self.multi or self.category.currentData() == 'machine':
+            return
+        record = self.matches[item.row()]
+        if item.checkState() == Qt.CheckState.Checked:
+            self.checked.add(id(record))
+        else:
+            self.checked.discard(id(record))
+        self.update_selection_count()
+
+    def update_selection_count(self):
+        if self.multi and self.category.currentData() in ('filament', 'process'):
+            self.choose.setText(f'Add {len(self.checked)} selected profiles')
+            self.choose.setEnabled(bool(self.checked))
+            self.details.setText(f'{len(self.checked)} selected across all filters. Uncheck a profile to remove it; Cancel adds nothing.')
+        else:
+            self.choose.setText('Use selected profile')
