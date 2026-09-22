@@ -89,6 +89,47 @@ def assignment_map(data):
     }}
 
 
+def set_readiness(data):
+    """Collect actionable assignment gaps without modifying an incomplete set."""
+    issues = []
+    profiles = data['profiles']
+    printers = [p for p in profiles if p['type'] == 'machine']
+    available = {kind: {p['name'] for p in profiles if p['type'] == kind} for kind in ('filament', 'process')}
+    for kind, title in [('machine', 'printer'), ('filament', 'filament'), ('process', 'process')]:
+        if not any(p['type'] == kind for p in profiles):
+            issues.append(f'Add at least one {title}.')
+    assignments = assignment_map(data)
+    for printer in printers:
+        name = printer['name']
+        choice = assignments.get(name, {})
+        nozzles = printer.get('nozzle_diameter', [])
+        try:
+            valid = isinstance(nozzles, list) and bool(nozzles) and all(math.isfinite(float(n)) and float(n) > 0 for n in nozzles)
+        except (ValueError, TypeError):
+            valid = False
+        if not valid:
+            issues.append(f'{name}: set a positive nozzle diameter for each extruder.')
+        for field, kind in [('filaments', 'filament'), ('processes', 'process')]:
+            selected = choice.get(field, [])
+            if not selected or any(n not in available[kind] for n in selected):
+                issues.append(f'{name}: assign valid {field}.')
+        defaults = choice.get('defaults', {})
+        slots = defaults.get('filaments', [])
+        if valid:
+            for i in range(len(nozzles)):
+                if i >= len(slots) or slots[i] not in choice.get('filaments', []):
+                    issues.append(f'{name}: choose a default filament for E{i}.')
+            if len(slots) > len(nozzles):
+                issues.append(f'{name}: remove defaults for extruders no longer present.')
+        if not defaults.get('process') or defaults['process'] not in choice.get('processes', []):
+            issues.append(f'{name}: choose an assigned default process.')
+    for kind, field in [('filament', 'filaments'), ('process', 'processes')]:
+        for name in sorted(available[kind]):
+            if printers and not any(name in assignments.get(p['name'], {}).get(field, []) for p in printers):
+                issues.append(f'{name}: assign to a printer or remove this copy.')
+    return issues
+
+
 def prepare_set(data):
     profiles = deepcopy(data['profiles'])
     printers = [p for p in profiles if p['type'] == 'machine']
@@ -155,6 +196,10 @@ def review_set(data):
     for printer in printers:
         if not numbers(printer.get('nozzle_diameter')):
             warnings.append(f"{printer['name']}: nozzle diameters are missing or invalid; review them before installation.")
+        variant = numbers(printer.get('printer_variant'))
+        nozzles = numbers(printer.get('nozzle_diameter'))
+        if len(variant) == 1 and nozzles and any(v != variant[0] for v in nozzles):
+            warnings.append(f"{printer['name']}: printer variant {printer['printer_variant']} does not match all nozzle diameters. Review model/variant metadata before testing Orca's nozzle selector.")
     diameters = set()
     for profile in data['profiles']:
         name = profile['name']

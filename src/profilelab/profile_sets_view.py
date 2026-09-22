@@ -21,6 +21,7 @@ from profilelab.library import VERSION
 from profilelab.profile_picker import ProfilePicker
 from profilelab.set_assignments import AssignmentsDialog
 from profilelab.profile_sets import assignment_map
+from profilelab.profile_sets import set_readiness
 from profilelab.choice_combo import ChoiceComboBox as QComboBox, choose_text
 from profilelab.library_choices import selectable_library_records
 
@@ -61,6 +62,9 @@ class ProfileSetsView(QWidget):
         self.members = QListWidget()
         self.members.currentRowChanged.connect(self.show_profile)
         layout.addWidget(self.members)
+        self.readiness = QLabel()
+        self.readiness.setWordWrap(True)
+        layout.addWidget(self.readiness)
         layout.addWidget(QLabel('Click a value to edit this copy. Setting names are read-only.'))
         self.values = QTableWidget(0, 2)
         self.values.setHorizontalHeaderLabels(['Setting', 'Value'])
@@ -110,7 +114,12 @@ class ProfileSetsView(QWidget):
         self.back.setEnabled(self.steps.currentIndex() > 0)
         self.next.setEnabled(self.steps.currentIndex() < 3)
         if self.data is None:
+            self.readiness.clear()
             return
+        gaps = set_readiness(self.data)
+        self.readiness.setText('Ready for package review — hardware suitability still needs checking.' if not gaps else
+                               f'{len(gaps)} items to finish before packaging. Next: {gaps[0]}')
+        self.readiness.setToolTip('\n'.join(gaps))
         kind = self.current_kind()
         for i, p in enumerate(self.data['profiles']):
             if kind and p['type'] != kind:
@@ -323,6 +332,26 @@ class ProfileSetsView(QWidget):
 
     def package(self):
         if not self.data:
+            return
+        gaps = set_readiness(self.data)
+        if gaps:
+            self.steps.setCurrentIndex(3)
+            dialog = QDialog(self)
+            dialog.setWindowTitle('Finish your profile set')
+            dialog.resize(680, 420)
+            layout = QVBoxLayout(dialog)
+            note = QLabel('Your set is saved. Complete these items before creating a package:')
+            note.setWordWrap(True)
+            layout.addWidget(note)
+            items = QListWidget()
+            items.addItems(gaps)
+            layout.addWidget(items)
+            buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+            assign = buttons.addButton('Assign profiles and defaults…', QDialogButtonBox.ButtonRole.ActionRole)
+            assign.clicked.connect(lambda: (dialog.accept(), self.defaults()))
+            buttons.rejected.connect(dialog.reject)
+            layout.addWidget(buttons)
+            dialog.exec()
             return
         profiles = prepare_set(self.data)
         warnings = review_set(self.data)

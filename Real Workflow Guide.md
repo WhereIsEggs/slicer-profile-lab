@@ -248,3 +248,15 @@ recommendations are not automatically selected. Without explicit links, expand t
 family and check variants manually. Turn off Group filament families for the flat
 list. These are selection suggestions, not a guarantee of Orca's runtime switching
 or hardware suitability; review the package assignments before installing.
+
+### Before packaging a multi-nozzle set
+
+The wizard shows how many assignment/default items remain. Prepare and install
+opens a complete, scrollable checklist if the set is incomplete, with a shortcut
+to Assign profiles and defaults. Incomplete sets remain saved for later.
+
+Review also warns when a numeric printer variant disagrees with its nozzle
+diameters; it does not silently rewrite either value. Automated tests cover a
+same-model 0.4/0.8 dual-extruder set through save/reopen, packaging, sharing ZIP,
+and isolated file installation. Actual nozzle switching and import behavior in
+Orca still require testing in the target Orca version.
