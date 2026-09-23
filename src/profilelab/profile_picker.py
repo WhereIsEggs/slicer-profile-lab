@@ -9,6 +9,16 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineE
 from profilelab.choice_combo import ChoiceComboBox as QComboBox
 
 
+def filament_brands(record):
+    """Use resolved print settings, not the bundle owner or product name."""
+    if record['type'] != 'filament':
+        return []
+    value = record.get('values', record.get('settings', {})).get('filament_vendor', [])
+    if isinstance(value, str):
+        value = [value]
+    return sorted({v.strip() for v in value if isinstance(v, str) and v.strip()}, key=str.casefold) if isinstance(value, list) else []
+
+
 class ProfilePicker(QDialog):
     def __init__(self, records, parent=None, *, multi=False, set_data=None, recommendation_records=None):
         super().__init__(parent)
@@ -23,7 +33,7 @@ class ProfilePicker(QDialog):
         self.setWindowTitle('Add from library')
         self.resize(850, 560)
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel('Choose a category, then search or filter by vendor. Original profiles stay unchanged.'))
+        layout.addWidget(QLabel('Search by name or filament brand; profile source identifies the library bundle. Originals stay unchanged.'))
         filters = QHBoxLayout()
         self.category = QComboBox()
         self.category.addItem('Choose category…', '')
@@ -31,8 +41,8 @@ class ProfilePicker(QDialog):
             self.category.addItem(title, kind)
         filters.addWidget(self.category)
         self.vendor = QComboBox()
-        self.vendor.setAccessibleName('Choose a vendor')
-        self.vendor.addItem('All vendors', '')
+        self.vendor.setAccessibleName('Profile source')
+        self.vendor.addItem('All profile sources', '')
         filters.addWidget(self.vendor)
         self.search = QLineEdit()
         self.search.setPlaceholderText('Search name, nozzle size, material…')
@@ -40,6 +50,11 @@ class ProfilePicker(QDialog):
         filters.addWidget(self.search, 1)
         layout.addLayout(filters)
         variants = QHBoxLayout()
+        self.brand = QComboBox()
+        self.brand.setAccessibleName('Filament brand')
+        self.brand.addItem('All filament brands', '')
+        self.brand.setToolTip('Filament manufacturer, including values inherited from parent profiles.')
+        variants.addWidget(self.brand)
         self.model = QComboBox()
         self.model.setAccessibleName('Choose a printer model')
         self.model.addItem('All printer models', '')
@@ -64,7 +79,7 @@ class ProfilePicker(QDialog):
         self.count = QLabel()
         layout.addWidget(self.count)
         self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels(['Profile', 'Vendor', 'Recommendation / why'])
+        self.table.setHorizontalHeaderLabels(['Profile', 'Profile source', 'Recommendation / why'])
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
@@ -75,7 +90,7 @@ class ProfilePicker(QDialog):
         self.table.setAlternatingRowColors(True)
         layout.addWidget(self.table)
         self.family_tree = QTreeWidget()
-        self.family_tree.setHeaderLabels(['Material family / exact profile', 'Vendor', 'Selection guidance'])
+        self.family_tree.setHeaderLabels(['Material family / exact profile', 'Profile source', 'Selection guidance'])
         self.family_tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.family_tree.header().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.family_tree.setAlternatingRowColors(True)
@@ -94,6 +109,7 @@ class ProfilePicker(QDialog):
         layout.addWidget(buttons)
         self.category.currentIndexChanged.connect(self.category_changed)
         self.vendor.currentIndexChanged.connect(self.models_changed)
+        self.brand.currentIndexChanged.connect(self.filter)
         self.model.currentIndexChanged.connect(self.nozzles_changed)
         self.nozzle.currentIndexChanged.connect(self.filter)
         self.search.textChanged.connect(self.filter)
@@ -103,16 +119,24 @@ class ProfilePicker(QDialog):
         self.filter()
         self.model.hide()
         self.nozzle.hide()
+        self.brand.hide()
 
     def category_changed(self):
         self.checked.clear()
         self.vendor.blockSignals(True)
         self.vendor.clear()
-        self.vendor.addItem('All vendors', '')
+        self.vendor.addItem('All profile sources', '')
         for vendor in sorted({p.get('vendor', '') for p in self.records if p['type'] == self.category.currentData()}, key=str.casefold):
             if vendor:
                 self.vendor.addItem(vendor, vendor)
         self.vendor.blockSignals(False)
+        self.brand.blockSignals(True)
+        self.brand.clear()
+        self.brand.addItem('All filament brands', '')
+        for brand in sorted({b for p in self.records for b in filament_brands(p)}, key=str.casefold):
+            self.brand.addItem(brand, brand)
+        self.brand.blockSignals(False)
+        self.brand.setVisible(self.category.currentData() == 'filament')
         self.models_changed()
 
     def models_changed(self):
@@ -150,20 +174,22 @@ class ProfilePicker(QDialog):
         self.table.setRowCount(0)
         self.details.setText('Select a profile to see its source and inherited settings.')
         kind, vendor = self.category.currentData(), self.vendor.currentData()
+        brand = self.brand.currentData() if kind == 'filament' else ''
         model, variant = self.model.currentData(), self.nozzle.currentData()
         terms = self.search.text().casefold().split()
         self.matches = sorted((p for p in self.records if p['type'] == kind
                                and (not vendor or p.get('vendor') == vendor)
+                               and (not brand or brand in filament_brands(p))
                                and (kind != 'machine' or not model or p.get('model') == model)
                                and (kind != 'machine' or not variant or p.get('variant') == variant)
                                and (not self.recommended.isChecked() or self.reasons[id(p)])
-                               and all(t in (p['name'] + ' ' + p.get('vendor', '')).casefold() for t in terms)),
+                               and all(t in (p['name'] + ' ' + p.get('vendor', '') + ' ' + ' '.join(filament_brands(p))).casefold() for t in terms)),
                               key=lambda p: (not bool(self.reasons[id(p)]), p['name'].casefold(), p.get('vendor', '').casefold(), p.get('path', '')))
         self.table.setRowCount(len(self.matches))
         for row, p in enumerate(self.matches):
             item = QTableWidgetItem(p['name'])
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
-            item.setToolTip(p.get('path', p['name']))
+            item.setToolTip(p.get('path', p['name']) + '\nFilament brand: ' + (', '.join(filament_brands(p)) or 'Not specified'))
             if self.multi and kind in ('filament', 'process') and not p.get('source_error'):
                 item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
                 item.setCheckState(Qt.CheckState.Checked if id(p) in self.checked else Qt.CheckState.Unchecked)
@@ -175,7 +201,7 @@ class ProfilePicker(QDialog):
         self.table.blockSignals(False)
         self.update_selection_count()
         self.count.setText('Choose Printers, Filaments, or Processes to begin.' if not kind else
-                           f'{len(self.matches)} profiles found' if self.matches else 'No matches. Try another search or vendor.')
+                           f'{len(self.matches)} profiles found' if self.matches else 'No matches. Try another search, brand, or profile source.')
         grouped = self.multi and kind == 'filament' and self.group_families.isChecked()
         self.group_families.setVisible(self.multi and kind == 'filament')
         self.table.setVisible(not grouped)
@@ -205,6 +231,7 @@ class ProfilePicker(QDialog):
                 child.setData(0, Qt.ItemDataRole.UserRole, id(record))
                 child.setFlags(child.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
                 child.setToolTip(0, 'Exact profile: ' + record['name'] + '\nSource chain: ' + ' → '.join(record.get('source_chain', [])))
+                child.setToolTip(0, child.toolTip(0) + '\nFilament brand: ' + (', '.join(filament_brands(record)) or 'Not specified'))
                 child.setToolTip(2, child.text(2))
                 parent.addChild(child)
                 if not record.get('source_error'):

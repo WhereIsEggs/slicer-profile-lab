@@ -26,6 +26,37 @@ class ProfilePickerTests(unittest.TestCase):
         self.assertEqual(self.picker.table.rowCount(), 0)
         self.assertFalse(self.picker.choose.isEnabled())
 
+    def test_filament_brand_search_uses_inherited_values_across_sources(self):
+        from copy import deepcopy
+        from profilelab.resolver import ProfileResolver
+        base = dict(name='Product base', type='filament', vendor='OrcaFilamentLibrary',
+                    path='base.json', settings={'filament_vendor': ['Polymaker']})
+        leaf = dict(name='PolyTerra PLA', type='filament', vendor='BBL', path='leaf.json',
+                    settings={'inherits': 'Product base'})
+        leaf['values'] = {k: v.value for k, v in ProfileResolver([base, leaf]).resolve(leaf).items()}
+        other = dict(name='PolyLite PLA', type='filament', vendor='Qidi',
+                     values={'filament_vendor': ['Polymaker']})
+        unknown = dict(name='Unknown PLA', type='filament', vendor='BBL')
+        records = [leaf, other, unknown]
+        before = deepcopy(records)
+        picker = ProfilePicker(records, multi=True)
+        self.addCleanup(picker.close)
+        picker.category.setCurrentIndex(2)
+        self.assertGreater(picker.brand.findData('Polymaker'), 0)
+        self.assertEqual(picker.brand.findData('BBL'), -1)
+        picker.search.setText('polymaker')
+        self.assertEqual({id(r) for r in picker.matches}, {id(leaf), id(other)})
+        picker.search.clear()
+        picker.brand.setCurrentIndex(picker.brand.findData('Polymaker'))
+        self.assertEqual(len(picker.matches), 2)
+        picker.checked.add(id(other))
+        picker.vendor.setCurrentIndex(picker.vendor.findData('BBL'))
+        self.assertEqual(picker.matches, [leaf])
+        self.assertIn(id(other), picker.checked)
+        picker.category.setCurrentIndex(1)
+        self.assertTrue(picker.brand.isHidden())
+        self.assertEqual(records, before)
+
     def test_filters_and_selects_exact_record(self):
         self.picker.category.setCurrentIndex(1)
         self.picker.vendor.setCurrentIndex(self.picker.vendor.findData('Beta'))

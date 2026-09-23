@@ -206,6 +206,12 @@ and limitations. This is not coverage of every vendor/hardware configuration.
   desktop releases. A private Windows alpha installer now bundles Python;
   see the [alpha testing guide](docs/alpha-testing.md).
 
+In **Add from library**, use **All filament brands** to filter by the material
+manufacturer (for example, Polymaker). Brand values include inherited settings,
+so searching `Polymaker` also finds products named PolyLite or PolyTerra.
+**All profile sources** is a separate filter for the library bundle, such as BBL,
+Qidi, or OrcaFilamentLibrary. Neither filter changes compatibility or inheritance.
+
 To delete an entire saved set, choose it in **My profile sets**, click
 **Delete set…** beside the saved-set selector, and confirm. This moves its saved
 file to `%LOCALAPPDATA%\SlicerProfileLab\sets\deleted\<backup-id>\`.
