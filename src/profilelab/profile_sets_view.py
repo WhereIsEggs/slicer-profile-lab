@@ -22,6 +22,7 @@ from profilelab.profile_picker import ProfilePicker
 from profilelab.set_assignments import AssignmentsDialog
 from profilelab.profile_sets import assignment_map
 from profilelab.profile_sets import set_readiness
+from profilelab.profile_sets import delete_set
 from profilelab.choice_combo import ChoiceComboBox as QComboBox, choose_text
 from profilelab.library_choices import selectable_library_records
 
@@ -41,7 +42,13 @@ class ProfileSetsView(QWidget):
         layout.addWidget(self.status)
         self.saved = QComboBox()
         self.saved.activated.connect(self.open_set)
-        layout.addWidget(self.saved)
+        saved_row = QHBoxLayout()
+        saved_row.addWidget(self.saved, 1)
+        self.delete_button = QPushButton('Delete set…')
+        self.delete_button.setEnabled(False)
+        self.delete_button.clicked.connect(lambda: self.run(self.delete_current_set))
+        saved_row.addWidget(self.delete_button)
+        layout.addLayout(saved_row)
         self.steps = QTabBar()
         for title in ('1. Printers', '2. Filaments', '3. Processes', '4. Assignments and review'):
             self.steps.addTab(title)
@@ -100,7 +107,26 @@ class ProfileSetsView(QWidget):
     def open_set(self, index):
         if index > 0:
             self.data = deepcopy(self.sets[index - 1])
-            self.render()
+        else:
+            self.data = None
+        self.render()
+
+    def delete_current_set(self):
+        if self.data is None:
+            return
+        answer = QMessageBox.question(self, 'Delete saved set?',
+            f'Delete "{self.data["name"]}" and its copies from My profile sets?\n\n'
+            'A recoverable backup will be kept. Exported packages, original drafts, '
+            'library profiles, and profiles installed in OrcaSlicer will not be removed.',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        backup = delete_set(self.root, self.data)
+        self.data = None
+        self.reload()
+        self.render()
+        self.status.setText(f'Set deleted. Recoverable backup: {backup}\nPackages and installed Orca profiles are unchanged.')
 
     def persist(self):
         save_set(self.root, self.data)
@@ -109,12 +135,16 @@ class ProfileSetsView(QWidget):
         self.render()
 
     def render(self, *_):
+        self.delete_button.setEnabled(self.data is not None)
+        self.values.setRowCount(0)
         self.members.clear()
         self.member_indices = []
         self.back.setEnabled(self.steps.currentIndex() > 0)
         self.next.setEnabled(self.steps.currentIndex() < 3)
         if self.data is None:
+            self.status.setText('Choose a saved set or create a new set.')
             self.readiness.clear()
+            self.readiness.setToolTip('')
             return
         gaps = set_readiness(self.data)
         self.readiness.setText('Ready for package review — hardware suitability still needs checking.' if not gaps else

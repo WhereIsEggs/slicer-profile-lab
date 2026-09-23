@@ -206,7 +206,13 @@ and limitations. This is not coverage of every vendor/hardware configuration.
   desktop releases. A private Windows alpha installer now bundles Python;
   see the [alpha testing guide](docs/alpha-testing.md).
 
-Draft deletion and removing a set member already exist; they do not delete
+To delete an entire saved set, choose it in **My profile sets**, click
+**Delete set…** beside the saved-set selector, and confirm. This moves its saved
+file to `%LOCALAPPDATA%\SlicerProfileLab\sets\deleted\<backup-id>\`.
+To restore it, close Profile Lab and move that JSON file back into `sets` without
+overwriting an existing file. Original drafts and library profiles are unchanged.
+
+Draft deletion, set deletion, and removing a set member do not delete
 exported packages or uninstall profiles. There is no general package cleanup or
 uninstall button yet. See the [README](README.md) for the roadmap and current
 limits. No release dates are promised.

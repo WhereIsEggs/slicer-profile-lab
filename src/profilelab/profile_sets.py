@@ -52,6 +52,30 @@ def load_sets(root):
     return result
 
 
+def delete_set(root, original):
+    """Move one unchanged saved set to a recoverable backup; never touch exports."""
+    root = Path(root).resolve()
+    source = root / (str(UUID(original['id'])) + '.json')
+    if source.resolve() != source:
+        raise ValueError('Linked set files are not supported.')
+    if json.loads(source.read_text(encoding='utf-8')) != original:
+        raise ValueError('This set changed since it was opened. Reopen it before deleting.')
+    backup_root = root / 'deleted'
+    if backup_root.resolve() != backup_root:
+        raise ValueError('Linked backup folders are not supported.')
+    backup_root.mkdir(exist_ok=True)
+    # A unique directory preserves the original UUID filename for manual restore.
+    destination = backup_root / uuid4().hex
+    destination.mkdir()
+    backup = destination / source.name
+    try:
+        source.rename(backup)
+    except Exception:
+        destination.rmdir()
+        raise
+    return backup
+
+
 def add_copy(data, kind, name, values, version, source=None):
     _safe_name(name)
     if kind not in IDENTITIES:
