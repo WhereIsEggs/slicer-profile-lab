@@ -86,6 +86,9 @@ class DraftsView(QWidget):
         self.values.setAlternatingRowColors(True)
         self.values.verticalHeader().hide()
         self.values.cellClicked.connect(self.edit_value)
+        from profilelab.setting_tabs import SettingTabs
+        self.setting_tabs = SettingTabs(self.values)
+        layout.addWidget(self.setting_tabs)
         layout.addWidget(self.values, 2)
         reset = QPushButton("Reset selected setting to starting value")
         reset.clicked.connect(self.reset_value)
@@ -191,6 +194,7 @@ class DraftsView(QWidget):
 
     def show_draft(self, row):
         self.values.setRowCount(0)
+        self.setting_tabs.configure('', [])
         self.prepare_button.setEnabled(0 <= row < len(self.drafts))
         self.delete_button.setEnabled(0 <= row < len(self.drafts))
         if not 0 <= row < len(self.drafts):
@@ -202,7 +206,10 @@ class DraftsView(QWidget):
             "OrcaSlicer's internal defaults are not included."
         )
         self.values.setRowCount(len(draft["base_values"]))
-        for row, (key, value) in enumerate(sorted(draft["base_values"].items())):
+        from profilelab.setting_tabs import ordered_keys
+        keys = ordered_keys(draft['type'], draft['base_values'])
+        for row, key in enumerate(keys):
+            value = draft['base_values'][key]
             value = draft.get("overrides", {}).get(key, value)
             from profilelab.setting_labels import setting_label, setting_help
             name_item = QTableWidgetItem(setting_label(key))
@@ -219,13 +226,12 @@ class DraftsView(QWidget):
             value_item.setFont(font)
             self.values.setItem(row, 0, name_item)
             self.values.setItem(row, 1, value_item)
+        self.setting_tabs.configure(draft['type'], keys)
         self.filter_settings()
 
     def filter_settings(self):
         query = self.setting_search.text().strip().casefold()
-        for row in range(self.values.rowCount()):
-            item = self.values.item(row, 0)
-            self.values.setRowHidden(row, bool(item and query not in (item.text() + ' ' + str(item.data(Qt.ItemDataRole.UserRole))).casefold()))
+        self.setting_tabs.apply(query=query)
 
     def open_package_folder(self):
         if self.last_package is not None:

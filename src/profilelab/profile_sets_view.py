@@ -3,6 +3,7 @@
 # See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
 """Mix-and-match workspace using frozen copies, not source-profile edits."""
 from copy import deepcopy
+from profilelab.setting_tabs import SettingTabs, ordered_keys
 from profilelab.setting_labels import setting_label, setting_help
 from pathlib import Path
 from uuid import uuid4
@@ -79,6 +80,8 @@ class ProfileSetsView(QWidget):
         self.values.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.values.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.values.cellClicked.connect(lambda row, column: self.run(lambda: self.edit(row, column)))
+        self.setting_tabs = SettingTabs(self.values)
+        layout.addWidget(self.setting_tabs)
         layout.addWidget(self.values)
         navigation = QHBoxLayout()
         self.back = QPushButton('Back')
@@ -139,6 +142,7 @@ class ProfileSetsView(QWidget):
         self.delete_button.setEnabled(self.data is not None)
         self.values.setRowCount(0)
         self.members.clear()
+        self.setting_tabs.configure('', [])
         self.member_indices = []
         self.back.setEnabled(self.steps.currentIndex() > 0)
         self.next.setEnabled(self.steps.currentIndex() < 3)
@@ -340,16 +344,19 @@ class ProfileSetsView(QWidget):
 
     def show_profile(self, row):
         self.values.setRowCount(0)
+        self.setting_tabs.configure('', [])
         if row < 0 or self.data is None:
             return
         profile = self.data['profiles'][self.member_indices[row]]
         self.keys = sorted(k for k in profile if k not in ('name', 'type', 'from', 'inherits', 'version', 'instantiation') and not k.endswith('_settings_id') and not k.startswith(('compatible_', 'default_')))
+        self.keys = ordered_keys(profile['type'], self.keys)
         self.values.setRowCount(len(self.keys))
         for i, key in enumerate(self.keys):
             item = QTableWidgetItem(setting_label(key))
             item.setToolTip(setting_help(key))
             self.values.setItem(i, 0, item)
             self.values.setItem(i, 1, QTableWidgetItem(display_value(profile[key], key)))
+        self.setting_tabs.configure(profile['type'], self.keys)
 
     def edit(self, row, column):
         if column != 1:

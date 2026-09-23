@@ -225,6 +225,14 @@ JSON keys. Unknown settings retain readable fallback names. Display wording is
 based on the pinned source revision in `orca_setting_labels.py`, so it may differ
 from another Orca release. Exported JSON names and values are not translated.
 
+Draft and profile-set editors organize stored settings into Orca-style tabs,
+following the pinned source's static field order rather than alphabetical order.
+Filaments use Filament, Cooling, Setting Overrides, Advanced, Multimaterial,
+Dependencies, and Notes. Unmapped/dynamically assembled options remain accessible
+in **Other settings**. Only stored settings are shown; empty tabs do not add Orca
+defaults. Set compatibility/defaults still use **Assign profiles and defaults…**.
+Draft search spans all tabs while a query is entered. JSON tooltips remain available.
+
 To delete an entire saved set, choose it in **My profile sets**, click
 **Delete set…** beside the saved-set selector, and confirm. This moves its saved
 file to `%LOCALAPPDATA%\SlicerProfileLab\sets\deleted\<backup-id>\`.

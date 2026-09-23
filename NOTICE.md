@@ -61,6 +61,11 @@ No additional noncommercial, no-redistribution or no-modification restrictions
 are imposed. The alpha label describes maturity, not a limitation on license rights.
 # Orca setting display metadata
 
+`orca_setting_layout.py` similarly derives static page, group, and field ordering
+from Orca's `src/slic3r/GUI/Tab.cpp`; its source revision is embedded in the file.
+Use `scripts/generate_setting_layout.py` to regenerate it. Dynamic or unmapped
+options remain available in Other settings rather than guessing their placement.
+
 `src/profilelab/orca_setting_labels.py` contains English labels, units, and
 descriptions extracted from OrcaSlicer's `src/libslic3r/PrintConfig.cpp`, under
 AGPL-3.0-only. The exact source commit is recorded as `SOURCE_REVISION` in that

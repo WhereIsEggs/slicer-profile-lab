@@ -99,6 +99,7 @@ class DemoTests(unittest.TestCase):
                     dialog.reject()
 
         QTimer.singleShot(0, edit_retraction)
+        view.setting_search.setText('retraction_length')
         QTest.mouseClick(view.values.viewport(), Qt.MouseButton.LeftButton, pos=view.values.visualItemRect(view.values.item(row, 1)).center())
         self.assertEqual(errors, [])
         saved = load_drafts(self.root / "drafts")[0][0]
