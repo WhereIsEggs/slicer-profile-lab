@@ -360,8 +360,17 @@ class ProfileSetsView(QWidget):
         self.setting_tabs.configure(profile['type'], self.keys)
         notes_key = {'machine': 'printer_notes', 'filament': 'filament_notes', 'process': 'notes'}[profile['type']]
         def save_notes(text):
+            previous = deepcopy(self.data)
             profile[notes_key] = text
-            self.run(self.persist)
+            try:
+                save_set(self.root, self.data)
+            except (OSError, ValueError):
+                profile.clear()
+                profile.update(previous['profiles'][self.member_indices[row]])
+                raise
+            for i, saved in enumerate(self.sets):
+                if saved['id'] == self.data['id']:
+                    self.sets[i] = deepcopy(self.data)
         self.setting_tabs.configure_notes(profile.get(notes_key, ''), save_notes)
 
     def edit(self, row, column):

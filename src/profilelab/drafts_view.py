@@ -229,8 +229,15 @@ class DraftsView(QWidget):
             self.values.setItem(row, 1, value_item)
         self.setting_tabs.configure(draft['type'], keys)
         notes_key = {'machine': 'printer_notes', 'filament': 'filament_notes', 'process': 'notes'}[draft['type']]
-        self.setting_tabs.configure_notes(draft.get('overrides', {}).get(notes_key, draft['base_values'].get(notes_key, '')),
-                                         lambda text: self.store_change(draft, notes_key, text))
+        def save_notes(text):
+            nonlocal draft
+            updated = save_override(self.root, draft, notes_key, text)
+            self.drafts[self.list.currentRow()] = updated
+            draft = updated
+            for i in range(self.values.rowCount()):
+                if self.values.item(i, 0).data(Qt.ItemDataRole.UserRole) == notes_key:
+                    self.values.item(i, 1).setText(display_value(text, notes_key))
+        self.setting_tabs.configure_notes(draft.get('overrides', {}).get(notes_key, draft['base_values'].get(notes_key, '')), save_notes)
         self.filter_settings()
 
     def filter_settings(self):

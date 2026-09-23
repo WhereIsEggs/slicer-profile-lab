@@ -18,6 +18,45 @@ class SettingTabsTests(unittest.TestCase):
         keys = ['additional_cooling_fan_speed', 'filament_diameter', 'filament_vendor', 'filament_type', 'filament_retraction_length']
         self.assertEqual(ordered_keys('filament', keys), ['filament_type', 'filament_vendor', 'filament_diameter', 'additional_cooling_fan_speed', 'filament_retraction_length'])
 
+    def test_set_notes_saved_immediately_and_survive_switching(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from profilelab.profile_sets import new_set, add_copy, save_set, load_sets
+        from profilelab.profile_sets_view import ProfileSetsView
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            data = new_set('Notes test')
+            add_copy(data, 'machine', 'First', {'nozzle_diameter': ['0.4']}, '2.4.2')
+            add_copy(data, 'machine', 'Second', {'nozzle_diameter': ['0.8']}, '2.4.2')
+            save_set(root, data)
+            view = ProfileSetsView(None, root=root)
+            view.open_set(1)
+            view.members.setCurrentRow(0)
+            view.setting_tabs.notes.insertPlainText('Hello')
+            view.setting_tabs.notes.insertPlainText('\nWorld')
+            self.assertEqual(load_sets(root)[0]['profiles'][0]['printer_notes'], 'Hello\nWorld')
+            self.assertEqual(view.setting_tabs.notes.textCursor().position(), 11)
+            view.members.setCurrentRow(1)
+            self.assertEqual(view.setting_tabs.notes.toPlainText(), '')
+            view.setting_tabs.notes.insertPlainText('Second notes')
+            view.open_set(1)
+            self.assertEqual(view.data['profiles'][0]['printer_notes'], 'Hello\nWorld')
+            self.assertEqual(view.data['profiles'][1]['printer_notes'], 'Second notes')
+            view.close()
+
+    def test_failed_autosave_is_visible_and_keeps_text(self):
+        table = QTableWidget()
+        tabs = SettingTabs(table)
+        def fail(text):
+            raise OSError('Disk unavailable')
+        tabs.configure_notes('', fail)
+        tabs.notes.insertPlainText('Keep this')
+        self.assertIn('could not be saved', tabs.notes_status.text())
+        self.assertEqual(tabs.notes.toPlainText(), 'Keep this')
+        tabs.notes_panel.close()
+        table.close()
+        tabs.close()
+
     def test_dependencies_hidden_and_notes_editable_for_each_kind(self):
         for kind, key in [('machine', 'printer_notes'), ('filament', 'filament_notes'), ('process', 'notes')]:
             table = QTableWidget(1, 2)
@@ -32,7 +71,8 @@ class SettingTabsTests(unittest.TestCase):
             self.assertTrue(table.isHidden())
             self.assertFalse(tabs.notes_panel.isHidden())
             tabs.notes.setPlainText('New notes\nSecond line')
-            tabs.save_notes.click()
+            self.assertEqual(saved, ['New notes\nSecond line'])
+            tabs.configure_notes('Another profile', saved.append)
             self.assertEqual(saved, ['New notes\nSecond line'])
             table.close()
             tabs.notes_panel.close()

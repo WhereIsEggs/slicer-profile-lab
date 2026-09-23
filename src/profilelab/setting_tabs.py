@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Presentation-only tabs; row indices continue to identify original JSON keys."""
-from PySide6.QtWidgets import QTabBar, QWidget, QVBoxLayout, QPlainTextEdit, QPushButton, QLabel
+from PySide6.QtWidgets import QTabBar, QWidget, QVBoxLayout, QPlainTextEdit, QLabel
 from profilelab.orca_setting_layout import LAYOUT
 
 
@@ -20,14 +20,13 @@ class SettingTabs(QTabBar):
         self.query = ''
         self.notes_panel = QWidget()
         layout = QVBoxLayout(self.notes_panel)
-        layout.addWidget(QLabel('Profile notes — click Save notes to keep your changes.'))
+        self.notes_status = QLabel('Notes save automatically.')
+        layout.addWidget(self.notes_status)
         self.notes = QPlainTextEdit()
         self.notes.setPlaceholderText('Type notes about this profile…')
         layout.addWidget(self.notes)
-        self.save_notes = QPushButton('Save notes')
-        layout.addWidget(self.save_notes)
-        self.save_notes.clicked.connect(lambda: self.notes_callback(self.notes.toPlainText()) if self.notes_callback else None)
         self.notes_callback = None
+        self.notes.textChanged.connect(self.save_notes_automatically)
         self.notes_panel.hide()
         self.setExpanding(False)
         self.setUsesScrollButtons(True)
@@ -59,8 +58,23 @@ class SettingTabs(QTabBar):
         self.apply()
 
     def configure_notes(self, value, callback):
+        self.notes.blockSignals(True)
         self.notes.setPlainText(value if isinstance(value, str) else '')
+        self.notes.blockSignals(False)
         self.notes_callback = callback
+        self.notes_status.setText('Notes save automatically.')
+
+    def save_notes_automatically(self):
+        if self.notes_callback is None:
+            return
+        try:
+            # Synchronous atomic save: no pending timer can target the next profile
+            # or miss the last edit before packaging/closing. Do not rebuild the editor.
+            self.notes_callback(self.notes.toPlainText())
+        except (OSError, ValueError) as error:
+            self.notes_status.setText('Notes could not be saved: ' + str(error))
+        else:
+            self.notes_status.setText('Notes saved automatically.')
 
     def apply(self, *_ , query=None):
         page = self.tabText(self.currentIndex())
