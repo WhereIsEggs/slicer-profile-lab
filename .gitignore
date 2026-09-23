@@ -22,3 +22,6 @@ artifacts/
 
 # Runtime logs (including Orca's numbered logs)
 *.log
+
+# Private development install destination; never ship with release builds.
+local-orca-test.json

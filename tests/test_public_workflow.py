@@ -45,7 +45,8 @@ class PublicWorkflowTests(unittest.TestCase):
                 self.assertEqual([len(groups[k]) for k in ("Printers", "Filaments", "Processes")], [1, 1, 1])
                 # Only the destination and process guard are isolated; actual installer runs.
                 with patch.dict(os.environ, {"APPDATA": str(root / "roaming")}), patch("profilelab.user_install.require_orca_closed"), patch("profilelab.drafts_view.QMessageBox.question", return_value=QMessageBox.StandardButton.Yes), patch("profilelab.drafts_view.QFileDialog.getOpenFileName") as picker, patch("profilelab.drafts_view.QMessageBox.warning") as warning:
-                    view.install_package()
+                    with patch('profilelab.drafts_view.install_destination', return_value=(root / 'roaming/OrcaSlicer/user/default', 'Temporary test profiles')):
+                        view.install_package()
                 picker.assert_not_called()
                 warning.assert_not_called()
                 self.assertIn("Installed successfully", view.status.text())

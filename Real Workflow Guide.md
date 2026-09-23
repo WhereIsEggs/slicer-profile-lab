@@ -248,6 +248,15 @@ uninstall button yet. See the [README](README.md) for the roadmap and current
 limits. No release dates are promised.
 # Updating Profile Lab itself
 
+For local development, an ignored `local-orca-test.json` in the repository can
+redirect installation using a `data_dir` path relative to the repository. The
+current test target is `artifacts/variant-comparison/development-sender`, matching
+**Start Orca 2.5 Test.cmd**. The install confirmation displays the destination.
+The directory must already exist; a missing target fails rather than falling
+back to normal profiles. Remove the local override to restore normal installation.
+Packaged apps always ignore this development override. Changing destinations
+does not move or remove previously installed profiles.
+
 Open Help → Check for updates and click Check now. No application update checks
 run automatically. If offered, click Download update; Profile Lab verifies the
 download against the release checksum. Open the downloaded installer folder,

@@ -21,6 +21,7 @@ from profilelab.user_install import exportable_profiles, install_user_profiles
 from profilelab.draft_package import prepare_draft_profiles, save_named_package
 from profilelab.orca_bundle import export_orca_bundle
 from profilelab.package_preview import PackagePreview, package_groups
+from profilelab.install_destination import install_destination
 
 
 class DraftsView(QWidget):
@@ -138,18 +139,17 @@ class DraftsView(QWidget):
         if not selected:
             return
         try:
-            if not os.environ.get("APPDATA"):
-                raise ValueError("The Windows user profile location could not be found.")
-            target = Path(os.environ["APPDATA"]) / "OrcaSlicer" / "user" / "default"
+            target, destination_label = install_destination()
             profiles = exportable_profiles(Path(selected))
             groups = package_groups(profiles)
-            preview = "\n".join(f"{group}: {len(names)}" for group, names in groups.items() if names)
+            preview = f'Destination: {destination_label}\n{target}\n\n' + "\n".join(f"{group}: {len(names)}" for group, names in groups.items() if names)
             answer = QMessageBox.question(self, "Install prepared profiles", "Close OrcaSlicer before continuing.\n\n" + preview + "\n\nYour printer, materials and processes will be installed as user profiles, ready to export from OrcaSlicer. Their saved parent settings are included automatically. Existing profiles will not be replaced.\n\nAfter installation, open OrcaSlicer and select the new printer.", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
             if answer != QMessageBox.StandardButton.Yes:
                 return
             installed = install_user_profiles(Path(selected), target)
             printers = ", ".join(groups["Printers"])
             outcome = "Installed successfully." if installed else "This exact package is already installed."
+            outcome += f'\nDestination: {destination_label}\n{target}'
             self.status.setText(outcome + (f"\nOpen OrcaSlicer and select: {printers}" if printers else "\nOpen OrcaSlicer to review the installed profiles.") + "\nCheck the filament and process selectors before printing. Installation does not certify print safety.")
         except (OSError, ValueError, RuntimeError, KeyError) as error:
             QMessageBox.warning(self, "Installation could not finish", str(error))
