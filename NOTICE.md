@@ -59,3 +59,12 @@ sources. Installed copies also contain `_internal/profilelab-source.zip` and
 `_internal/dependency-sources`. See docs/licensing.md for redistribution steps.
 No additional noncommercial, no-redistribution or no-modification restrictions
 are imposed. The alpha label describes maturity, not a limitation on license rights.
+# Orca setting display metadata
+
+`src/profilelab/orca_setting_labels.py` contains English labels, units, and
+descriptions extracted from OrcaSlicer's `src/libslic3r/PrintConfig.cpp`, under
+AGPL-3.0-only. The exact source commit is recorded as `SOURCE_REVISION` in that
+file. Regenerate with `scripts/generate_setting_labels.py` and a local source
+checkout. This is presentation metadata, not a validation schema or defaults
+catalog; labels can differ across Orca versions. Profile Lab adds context to
+flat-table labels and preserves original JSON keys and values.

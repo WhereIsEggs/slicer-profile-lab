@@ -204,7 +204,9 @@ class DraftsView(QWidget):
         self.values.setRowCount(len(draft["base_values"]))
         for row, (key, value) in enumerate(sorted(draft["base_values"].items())):
             value = draft.get("overrides", {}).get(key, value)
-            name_item = QTableWidgetItem(key.replace("_", " ").capitalize())
+            from profilelab.setting_labels import setting_label, setting_help
+            name_item = QTableWidgetItem(setting_label(key))
+            name_item.setToolTip(setting_help(key))
             name_item.setData(Qt.ItemDataRole.UserRole, key)
             name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             value_item = QTableWidgetItem(display_value(value, key))
@@ -223,7 +225,7 @@ class DraftsView(QWidget):
         query = self.setting_search.text().strip().casefold()
         for row in range(self.values.rowCount()):
             item = self.values.item(row, 0)
-            self.values.setRowHidden(row, bool(item and query not in item.text().casefold()))
+            self.values.setRowHidden(row, bool(item and query not in (item.text() + ' ' + str(item.data(Qt.ItemDataRole.UserRole))).casefold()))
 
     def open_package_folder(self):
         if self.last_package is not None:

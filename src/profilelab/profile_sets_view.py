@@ -3,6 +3,7 @@
 # See LICENSE.txt and NOTICE.md for license, warranty and upstream attribution.
 """Mix-and-match workspace using frozen copies, not source-profile edits."""
 from copy import deepcopy
+from profilelab.setting_labels import setting_label, setting_help
 from pathlib import Path
 from uuid import uuid4
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -345,7 +346,9 @@ class ProfileSetsView(QWidget):
         self.keys = sorted(k for k in profile if k not in ('name', 'type', 'from', 'inherits', 'version', 'instantiation') and not k.endswith('_settings_id') and not k.startswith(('compatible_', 'default_')))
         self.values.setRowCount(len(self.keys))
         for i, key in enumerate(self.keys):
-            self.values.setItem(i, 0, QTableWidgetItem(key.replace('_', ' ').capitalize()))
+            item = QTableWidgetItem(setting_label(key))
+            item.setToolTip(setting_help(key))
+            self.values.setItem(i, 0, item)
             self.values.setItem(i, 1, QTableWidgetItem(display_value(profile[key], key)))
 
     def edit(self, row, column):
@@ -355,7 +358,7 @@ class ProfileSetsView(QWidget):
         key = self.keys[row]
         if not editable_value(profile[key]):
             return
-        dialog = SettingDialog(key.replace('_', ' ').capitalize(), key, profile[key], self)
+        dialog = SettingDialog(setting_label(key), key, profile[key], self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             profile[key] = dialog.value
             self.persist()

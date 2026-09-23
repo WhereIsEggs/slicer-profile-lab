@@ -293,15 +293,17 @@ class LibraryView(QWidget):
 
     def filter_settings(self):
         import json
+        from profilelab.setting_labels import setting_label, setting_help
         query = self.setting_search.text().casefold().strip()
         matches = [(key, setting) for key, setting in sorted(self.resolved.items())
-                   if query in key.replace("_", " ").casefold() or query in key.casefold()]
+                   if query in key.replace("_", " ").casefold() or query in key.casefold() or query in setting_label(key).casefold()]
         self.settings_table.setRowCount(0)
         self.settings_table.setRowCount(len(matches))
         for row, (key, setting) in enumerate(matches):
             value = display_value(setting.value, key)
             source = f"{setting.source_name} ({setting.source_vendor})"
-            for column, text in enumerate((key.replace("_", " ").capitalize(), value, setting.status, source)):
+            from profilelab.setting_labels import setting_label, setting_help
+            for column, text in enumerate((setting_label(key), value, setting.status, source)):
                 item = QTableWidgetItem(text)
-                item.setToolTip(key if column == 0 else (setting.source_path if column == 3 else text))
+                item.setToolTip(setting_help(key) if column == 0 else (setting.source_path if column == 3 else text))
                 self.settings_table.setItem(row, column, item)

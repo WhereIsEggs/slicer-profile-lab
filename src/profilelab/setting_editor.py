@@ -4,6 +4,7 @@
 """Human-readable value display and type-preserving draft editing."""
 
 import math
+from profilelab.setting_labels import setting_label, setting_help
 from decimal import Decimal, InvalidOperation
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel, QLineEdit,
@@ -62,13 +63,18 @@ def editable_value(value):
 class SettingDialog(QDialog):
     def __init__(self, label, key, value, parent=None, *, choices=None, extruder_slots=False):
         super().__init__(parent)
-        self.setWindowTitle(label)
+        self.setWindowTitle(setting_label(key))
         self.resize(460, 240)
         self.original = value
         self.key = key
         self.value = value
         self.editors = []
         layout = QVBoxLayout(self)
+        description = QLabel(setting_help(key))
+        description.setWordWrap(True)
+        from PySide6.QtCore import Qt
+        description.setTextFormat(Qt.TextFormat.PlainText)
+        layout.addWidget(description)
         note = QLabel("Change the value below." if not isinstance(value, list)
                       else "This setting has multiple values. Edit each value separately.")
         note.setWordWrap(True)
