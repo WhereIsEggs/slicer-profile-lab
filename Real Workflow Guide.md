@@ -211,6 +211,12 @@ manufacturer (for example, Polymaker). Brand values include inherited settings,
 so searching `Polymaker` also finds products named PolyLite or PolyTerra.
 **All profile sources** is a separate filter for the library bundle, such as BBL,
 Qidi, or OrcaFilamentLibrary. Neither filter changes compatibility or inheritance.
+For filaments, **All library locations** can be narrowed to **Shared filament
+library** (OrcaFilamentLibrary) or **Printer-vendor libraries**. This describes
+file location only: shared-library entries may still target specific printers.
+Exact profiles show whether their resolved settings contain printer links,
+conditional restrictions, or no explicit printer restriction. None of these
+labels certify print suitability. Checked selections remain selected across filters.
 
 To delete an entire saved set, choose it in **My profile sets**, click
 **Delete set…** beside the saved-set selector, and confirm. This moves its saved

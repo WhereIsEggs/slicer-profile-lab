@@ -19,6 +19,22 @@ def filament_brands(record):
     return sorted({v.strip() for v in value if isinstance(v, str) and v.strip()}, key=str.casefold) if isinstance(value, list) else []
 
 
+def printer_scope(record):
+    """Describe stored restrictions, not an assertion of physical suitability."""
+    if record.get('source_error'):
+        return 'Printer restrictions unresolved'
+    values = record.get('values', record.get('settings', {}))
+    links = values.get('compatible_printers', [])
+    condition = values.get('compatible_printers_condition', '')
+    if not isinstance(links, list) or not isinstance(condition, str):
+        return 'Printer restrictions need review'
+    if links:
+        return 'Linked to specific printers' + ('; conditional restriction' if condition.strip() else '')
+    if condition.strip():
+        return 'Conditional printer restriction'
+    return 'No explicit printer restriction'
+
+
 class ProfilePicker(QDialog):
     def __init__(self, records, parent=None, *, multi=False, set_data=None, recommendation_records=None):
         super().__init__(parent)
@@ -55,6 +71,13 @@ class ProfilePicker(QDialog):
         self.brand.addItem('All filament brands', '')
         self.brand.setToolTip('Filament manufacturer, including values inherited from parent profiles.')
         variants.addWidget(self.brand)
+        self.location = QComboBox()
+        self.location.setAccessibleName('Library location')
+        self.location.addItem('All library locations', '')
+        self.location.addItem('Shared filament library', 'shared')
+        self.location.addItem('Printer-vendor libraries', 'printer')
+        self.location.setToolTip('Where the file is stored, not which printers it supports.')
+        variants.addWidget(self.location)
         self.model = QComboBox()
         self.model.setAccessibleName('Choose a printer model')
         self.model.addItem('All printer models', '')
@@ -110,6 +133,7 @@ class ProfilePicker(QDialog):
         self.category.currentIndexChanged.connect(self.category_changed)
         self.vendor.currentIndexChanged.connect(self.models_changed)
         self.brand.currentIndexChanged.connect(self.filter)
+        self.location.currentIndexChanged.connect(self.filter)
         self.model.currentIndexChanged.connect(self.nozzles_changed)
         self.nozzle.currentIndexChanged.connect(self.filter)
         self.search.textChanged.connect(self.filter)
@@ -120,6 +144,7 @@ class ProfilePicker(QDialog):
         self.model.hide()
         self.nozzle.hide()
         self.brand.hide()
+        self.location.hide()
 
     def category_changed(self):
         self.checked.clear()
@@ -137,6 +162,10 @@ class ProfilePicker(QDialog):
             self.brand.addItem(brand, brand)
         self.brand.blockSignals(False)
         self.brand.setVisible(self.category.currentData() == 'filament')
+        self.location.blockSignals(True)
+        self.location.setCurrentIndex(0)
+        self.location.blockSignals(False)
+        self.location.setVisible(self.category.currentData() == 'filament')
         self.models_changed()
 
     def models_changed(self):
@@ -175,11 +204,14 @@ class ProfilePicker(QDialog):
         self.details.setText('Select a profile to see its source and inherited settings.')
         kind, vendor = self.category.currentData(), self.vendor.currentData()
         brand = self.brand.currentData() if kind == 'filament' else ''
+        location = self.location.currentData() if kind == 'filament' else ''
         model, variant = self.model.currentData(), self.nozzle.currentData()
         terms = self.search.text().casefold().split()
         self.matches = sorted((p for p in self.records if p['type'] == kind
                                and (not vendor or p.get('vendor') == vendor)
                                and (not brand or brand in filament_brands(p))
+                               and (not location or (p.get('vendor') == 'OrcaFilamentLibrary' if location == 'shared'
+                                                     else bool(p.get('vendor')) and p.get('vendor') != 'OrcaFilamentLibrary'))
                                and (kind != 'machine' or not model or p.get('model') == model)
                                and (kind != 'machine' or not variant or p.get('variant') == variant)
                                and (not self.recommended.isChecked() or self.reasons[id(p)])
@@ -196,12 +228,14 @@ class ProfilePicker(QDialog):
             self.table.setItem(row, 0, item)
             self.table.setItem(row, 1, QTableWidgetItem(p.get('vendor', '')))
             reason = QTableWidgetItem('; '.join(self.reasons[id(p)]) or 'No verified recommendation — manual review')
+            if kind == 'filament':
+                reason.setText(printer_scope(p) + ' — ' + reason.text())
             reason.setToolTip(reason.text())
             self.table.setItem(row, 2, reason)
         self.table.blockSignals(False)
         self.update_selection_count()
         self.count.setText('Choose Printers, Filaments, or Processes to begin.' if not kind else
-                           f'{len(self.matches)} profiles found' if self.matches else 'No matches. Try another search, brand, or profile source.')
+                           f'{len(self.matches)} profiles found' if self.matches else 'No matches. Try another search, brand, location, or profile source.')
         grouped = self.multi and kind == 'filament' and self.group_families.isChecked()
         self.group_families.setVisible(self.multi and kind == 'filament')
         self.table.setVisible(not grouped)
@@ -228,6 +262,7 @@ class ProfilePicker(QDialog):
                 parent.setCheckState(0, Qt.CheckState.Checked if selected == targets else Qt.CheckState.PartiallyChecked if selected else Qt.CheckState.Unchecked)
             for record in records:
                 child = QTreeWidgetItem([record['name'], record.get('vendor', ''), '; '.join(self.reasons[id(record)]) or 'Manual review'])
+                child.setText(2, printer_scope(record) + '\n' + child.text(2))
                 child.setData(0, Qt.ItemDataRole.UserRole, id(record))
                 child.setFlags(child.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
                 child.setToolTip(0, 'Exact profile: ' + record['name'] + '\nSource chain: ' + ' → '.join(record.get('source_chain', [])))

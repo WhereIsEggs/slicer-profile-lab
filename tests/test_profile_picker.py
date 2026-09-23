@@ -26,6 +26,41 @@ class ProfilePickerTests(unittest.TestCase):
         self.assertEqual(self.picker.table.rowCount(), 0)
         self.assertFalse(self.picker.choose.isEnabled())
 
+    def test_library_location_is_independent_of_brand_and_compatibility(self):
+        from copy import deepcopy
+        records = [dict(name='Shared tuned', type='filament', vendor='OrcaFilamentLibrary',
+                        values={'filament_vendor': ['Polymaker'], 'compatible_printers': ['Printer']}),
+                   dict(name='Vendor unrestricted', type='filament', vendor='BBL',
+                        values={'filament_vendor': ['Polymaker'], 'compatible_printers': []})]
+        before = deepcopy(records)
+        picker = ProfilePicker(records, multi=True)
+        self.addCleanup(picker.close)
+        picker.category.setCurrentIndex(2)
+        picker.brand.setCurrentIndex(picker.brand.findData('Polymaker'))
+        picker.location.setCurrentIndex(picker.location.findData('shared'))
+        self.assertEqual(picker.matches, [records[0]])
+        self.assertIn('Linked to specific printers', picker.table.item(0, 2).text())
+        child = picker.family_tree.topLevelItem(0).child(0)
+        self.assertIn('Linked to specific printers', child.text(2))
+        picker.checked.add(id(records[0]))
+        picker.location.setCurrentIndex(picker.location.findData('printer'))
+        self.assertEqual(picker.matches, [records[1]])
+        self.assertIn('No explicit printer restriction', picker.table.item(0, 2).text())
+        self.assertIn(id(records[0]), picker.checked)
+        picker.vendor.setCurrentIndex(picker.vendor.findData('OrcaFilamentLibrary'))
+        self.assertEqual(picker.matches, [])
+        picker.category.setCurrentIndex(1)
+        self.assertTrue(picker.location.isHidden())
+        self.assertEqual(picker.location.currentData(), '')
+        self.assertEqual(records, before)
+
+    def test_printer_scope_respects_conditions_and_unresolved_sources(self):
+        from profilelab.profile_picker import printer_scope
+        self.assertEqual(printer_scope({'values': {'compatible_printers_condition': 'nozzle_diameter[0] == 0.4'}}),
+                         'Conditional printer restriction')
+        self.assertEqual(printer_scope({'source_error': 'Missing parent'}), 'Printer restrictions unresolved')
+        self.assertEqual(printer_scope({'values': {'compatible_printers': 'bad'}}), 'Printer restrictions need review')
+
     def test_filament_brand_search_uses_inherited_values_across_sources(self):
         from copy import deepcopy
         from profilelab.resolver import ProfileResolver
