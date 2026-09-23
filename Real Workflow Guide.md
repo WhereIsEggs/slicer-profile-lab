@@ -228,7 +228,9 @@ from another Orca release. Exported JSON names and values are not translated.
 Draft and profile-set editors organize stored settings into Orca-style tabs,
 following the pinned source's static field order rather than alphabetical order.
 Filaments use Filament, Cooling, Setting Overrides, Advanced, Multimaterial,
-Dependencies, and Notes. Unmapped/dynamically assembled options remain accessible
+and Notes. Dependencies tabs are hidden; compatibility is managed through set
+assignments. The Notes tab has a multiline text box; click **Save notes** before
+switching profiles to keep edits. Unmapped/dynamically assembled options remain accessible
 in **Other settings**. Only stored settings are shown; empty tabs do not add Orca
 defaults. Set compatibility/defaults still use **Assign profiles and defaults…**.
 Draft search spans all tabs while a query is entered. JSON tooltips remain available.

@@ -18,6 +18,26 @@ class SettingTabsTests(unittest.TestCase):
         keys = ['additional_cooling_fan_speed', 'filament_diameter', 'filament_vendor', 'filament_type', 'filament_retraction_length']
         self.assertEqual(ordered_keys('filament', keys), ['filament_type', 'filament_vendor', 'filament_diameter', 'additional_cooling_fan_speed', 'filament_retraction_length'])
 
+    def test_dependencies_hidden_and_notes_editable_for_each_kind(self):
+        for kind, key in [('machine', 'printer_notes'), ('filament', 'filament_notes'), ('process', 'notes')]:
+            table = QTableWidget(1, 2)
+            table.setItem(0, 0, QTableWidgetItem(key))
+            tabs = SettingTabs(table)
+            saved = []
+            tabs.configure(kind, [key])
+            tabs.configure_notes('Original', saved.append)
+            pages = [tabs.tabText(i) for i in range(tabs.count())]
+            self.assertNotIn('Dependencies', pages)
+            tabs.setCurrentIndex(pages.index('Notes'))
+            self.assertTrue(table.isHidden())
+            self.assertFalse(tabs.notes_panel.isHidden())
+            tabs.notes.setPlainText('New notes\nSecond line')
+            tabs.save_notes.click()
+            self.assertEqual(saved, ['New notes\nSecond line'])
+            table.close()
+            tabs.notes_panel.close()
+            tabs.close()
+
     def test_tabs_search_unknown_and_preserved_selection(self):
         keys = ordered_keys('filament', ['filament_type', 'additional_cooling_fan_speed', 'future_option'])
         table = QTableWidget(len(keys), 2)

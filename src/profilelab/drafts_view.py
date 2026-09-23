@@ -89,6 +89,7 @@ class DraftsView(QWidget):
         from profilelab.setting_tabs import SettingTabs
         self.setting_tabs = SettingTabs(self.values)
         layout.addWidget(self.setting_tabs)
+        layout.addWidget(self.setting_tabs.notes_panel)
         layout.addWidget(self.values, 2)
         reset = QPushButton("Reset selected setting to starting value")
         reset.clicked.connect(self.reset_value)
@@ -227,6 +228,9 @@ class DraftsView(QWidget):
             self.values.setItem(row, 0, name_item)
             self.values.setItem(row, 1, value_item)
         self.setting_tabs.configure(draft['type'], keys)
+        notes_key = {'machine': 'printer_notes', 'filament': 'filament_notes', 'process': 'notes'}[draft['type']]
+        self.setting_tabs.configure_notes(draft.get('overrides', {}).get(notes_key, draft['base_values'].get(notes_key, '')),
+                                         lambda text: self.store_change(draft, notes_key, text))
         self.filter_settings()
 
     def filter_settings(self):

@@ -101,9 +101,10 @@ def save_override(root, original, key, value, reset=False):
     current = json.loads(destination.read_text(encoding="utf-8"))
     if current != original:
         raise ValueError("This draft changed since it was opened. Refresh drafts before editing.")
-    if key not in current["base_values"]:
+    notes_key = {'machine': 'printer_notes', 'filament': 'filament_notes', 'process': 'notes'}.get(current['type'])
+    if key not in current["base_values"] and key != notes_key:
         raise ValueError("Unknown setting.")
-    base = current["base_values"][key]
+    base = current["base_values"].get(key, '')
     if not reset:
         if type(value) is not type(base):
             raise ValueError("The value must keep the setting's original type.")

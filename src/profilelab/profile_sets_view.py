@@ -82,6 +82,7 @@ class ProfileSetsView(QWidget):
         self.values.cellClicked.connect(lambda row, column: self.run(lambda: self.edit(row, column)))
         self.setting_tabs = SettingTabs(self.values)
         layout.addWidget(self.setting_tabs)
+        layout.addWidget(self.setting_tabs.notes_panel)
         layout.addWidget(self.values)
         navigation = QHBoxLayout()
         self.back = QPushButton('Back')
@@ -357,6 +358,11 @@ class ProfileSetsView(QWidget):
             self.values.setItem(i, 0, item)
             self.values.setItem(i, 1, QTableWidgetItem(display_value(profile[key], key)))
         self.setting_tabs.configure(profile['type'], self.keys)
+        notes_key = {'machine': 'printer_notes', 'filament': 'filament_notes', 'process': 'notes'}[profile['type']]
+        def save_notes(text):
+            profile[notes_key] = text
+            self.run(self.persist)
+        self.setting_tabs.configure_notes(profile.get(notes_key, ''), save_notes)
 
     def edit(self, row, column):
         if column != 1:
