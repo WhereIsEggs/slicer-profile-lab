@@ -181,6 +181,7 @@ def set_readiness(data):
 
 
 def prepare_set(data):
+    from profilelab.printer_templates import sync_nozzle_variant
     profiles = deepcopy(data['profiles'])
     printers = [p for p in profiles if p['type'] == 'machine']
     filaments = [p for p in profiles if p['type'] == 'filament']
@@ -200,6 +201,7 @@ def prepare_set(data):
             valid_nozzles = False
         if not valid_nozzles:
             raise ValueError(f'{name}: nozzle diameters must be positive numbers.')
+        sync_nozzle_variant(printer)
         for field, available in [('filaments', filaments), ('processes', processes)]:
             names = choice.get(field, [])
             if not isinstance(names, list) or not names or any(n not in [p['name'] for p in available] for n in names):

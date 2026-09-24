@@ -17,7 +17,7 @@ class ScratchDialog(QDialog):
         self.setWindowTitle('Create ' + {'machine': 'printer', 'filament': 'filament', 'process': 'process'}[kind] + ' from scratch')
         self.resize(620, 690)
         layout = QVBoxLayout(self)
-        note = QLabel('Enter values for your hardware/material. No existing profile is copied. These are core settings, not a full calibration: other settings use Orca defaults and must be reviewed before printing.')
+        note = QLabel('Printers start with Orca’s generic firmware template; your entries replace its hardware and G-code settings. Review all template settings before printing. Filaments and processes use the entered core settings plus Orca defaults.')
         note.setWordWrap(True)
         layout.addWidget(note)
         scroll = QScrollArea()

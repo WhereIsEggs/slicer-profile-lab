@@ -19,6 +19,26 @@ from profilelab.profile_install import install_bundle
 
 @unittest.skipUnless(os.environ.get("PROFILELAB_NATIVE_TESTS") == "1", "Opt-in installed Orca engine test")
 class NativeBundleTests(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get('PROFILELAB_PUBLIC_LIBRARY_TESTS') == '1', 'Cached template test')
+    def test_generic_firmware_printers_load_with_entered_dual_nozzles(self):
+        from test_scratch_profiles import scratch_fixture
+        from profilelab.scratch_profiles import scratch_values
+        from profilelab.printer_templates import generic_printer
+        from profilelab.profile_sets import new_set, add_copy, prepare_set
+        from profilelab.library import read_snapshot, library_home
+        snapshot = read_snapshot(library_home())
+        for flavor in ('klipper', 'marlin2'):
+            data = new_set('Generic native test')
+            for kind, entries in scratch_fixture().items():
+                if kind == 'machine':
+                    entries.update(firmware=flavor, nozzle_1='0.4')
+                values = scratch_values(kind, entries)
+                if kind == 'machine':
+                    values, _ = generic_printer('Independent model', values, snapshot)
+                add_copy(data, kind, 'Fictional ' + kind, values, '2.4.2')
+            data['defaults'] = dict(filaments=['Fictional filament', 'Fictional filament'], process='Fictional process')
+            self.assert_profiles_load(prepare_set(data), ('machine', 'Fictional machine'), ordinary=True, select_all=True)
+
     def test_comparison_family_loads_all_eight_profiles(self):
         from prepare_variant_comparison import comparison_set
         from profilelab.profile_sets import prepare_set

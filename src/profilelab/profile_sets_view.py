@@ -25,6 +25,7 @@ from profilelab.set_assignments import AssignmentsDialog
 from profilelab.profile_sets import assignment_map
 from profilelab.profile_sets import set_readiness
 from profilelab.profile_sets import delete_set, rename_profile
+from profilelab.printer_templates import generic_printer, sync_nozzle_variant
 from profilelab.choice_combo import ChoiceComboBox as QComboBox, choose_text
 from profilelab.library_choices import selectable_library_records
 
@@ -204,6 +205,9 @@ class ProfileSetsView(QWidget):
         profile = self.data['profiles'][index]
         name, ok = QInputDialog.getText(self, 'Duplicate as variant', 'Give the variant a unique name, then edit its nozzle size or dimensions:', text=profile['name'] + ' - Variant')
         if ok:
+            if profile['type'] == 'machine' and not profile.get('printer_model'):
+                profile['printer_model'] = profile['name']
+                sync_nozzle_variant(profile)
             source = self.data.get('sources', {}).get(profile['type'] + '/' + profile['name'])
             add_copy(self.data, profile['type'], name.strip(), profile, profile['version'], source=source)
             self.persist()
@@ -351,7 +355,11 @@ class ProfileSetsView(QWidget):
                 return
         dialog = ScratchDialog(categories[label], self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            add_copy(self.data, categories[label], dialog.profile_name, dialog.result_values, VERSION)
+            values, version, source = dialog.result_values, VERSION, None
+            if categories[label] == 'machine':
+                values, source = generic_printer(dialog.profile_name, values, read_snapshot(library_home()))
+                version = source['version']
+            add_copy(self.data, categories[label], dialog.profile_name, values, version, source=source)
             self.persist()
 
     def add_draft(self):
@@ -420,6 +428,8 @@ class ProfileSetsView(QWidget):
         dialog = SettingDialog(setting_label(key), key, profile[key], self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             profile[key] = dialog.value
+            if profile['type'] == 'machine' and key == 'nozzle_diameter':
+                sync_nozzle_variant(profile)
             self.persist()
 
     def package(self):

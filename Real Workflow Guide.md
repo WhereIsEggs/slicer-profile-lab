@@ -248,6 +248,20 @@ To keep both old and new versions installed, cancel the update prompt and rename
 the conflicting copies in the set. **Save set as copy…** creates an independent
 saved set; it does not silently rename profiles or remove installed profiles.
 
+New scratch printers now start with the supported cached Orca library's generic
+Klipper, Marlin, or RRF template, selected from G-code flavor. Marlin 2 uses the
+Marlin template while retaining the selected `marlin2` flavor. The library must
+be downloaded first. Entered dimensions, nozzles, offsets, and start/end G-code
+override template values; review remaining generic settings for your hardware.
+Resolved settings are frozen into the set, not installed with a dependency on
+MyKlipper/MyMarlin. Existing saved sets are not retroactively filled with defaults.
+
+The initial printer name becomes its independent model identity. Duplicate as
+variant preserves that identity. Editing matching nozzle diameters synchronizes
+the variant number, and packaging repeats this synchronization. Mixed-diameter
+extruders are not represented as a single inferred diameter. This metadata does
+not collapse ordinary user presets into one sidebar entry in Orca's current UI.
+
 To delete an entire saved set, choose it in **My profile sets**, click
 **Delete set…** beside the saved-set selector, and confirm. This moves its saved
 file to `%LOCALAPPDATA%\SlicerProfileLab\sets\deleted\<backup-id>\`.
