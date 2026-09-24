@@ -134,10 +134,24 @@ class ProfileSetsView(QWidget):
         self.status.setText(f'Set deleted. Recoverable backup: {backup}\nPackages and installed Orca profiles are unchanged.')
 
     def persist(self):
+        selected = self.members.currentItem()
+        selected_label = selected.text() if selected is not None else None
+        setting_row = self.values.currentRow()
+        setting_key = self.keys[setting_row] if setting_row >= 0 and setting_row < len(getattr(self, 'keys', [])) else None
+        scroll = self.values.verticalScrollBar().value()
         save_set(self.root, self.data)
         self.reload()
         self.saved.setCurrentIndex(next(i + 1 for i, d in enumerate(self.sets) if d['id'] == self.data['id']))
         self.render()
+        # Rebuilding the list must not close the editor after saving a value.
+        # Match identity rather than the old row, which can shift after removal.
+        for row in range(self.members.count()):
+            if self.members.item(row).text() == selected_label:
+                self.members.setCurrentRow(row)
+                if setting_key in self.keys:
+                    self.values.setCurrentCell(self.keys.index(setting_key), 1)
+                self.values.verticalScrollBar().setValue(scroll)
+                break
 
     def render(self, *_):
         self.delete_button.setEnabled(self.data is not None)
