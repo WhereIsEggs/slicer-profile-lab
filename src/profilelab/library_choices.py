@@ -6,6 +6,32 @@ def selectable_library_records(records):
     return [r for r in records if not r.get('template')]
 
 
+def copy_name(record, values, data):
+    """Clean filament display names without changing their manufacturer/settings."""
+    name = record['name']
+    if record['type'] == 'filament':
+        alias = record.get('settings', {}).get('alias')
+        name = (alias if isinstance(alias, str) and alias.strip() else name).split('@', 1)[0].strip()
+        brands = values.get('filament_vendor', [])
+        if isinstance(brands, str):
+            brands = [brands]
+        if isinstance(brands, list):
+            for brand in brands:
+                if isinstance(brand, str) and brand.strip() and brand.casefold() != 'generic':
+                    prefix = brand.strip() + ' '
+                    if name.casefold().startswith(prefix.casefold()):
+                        name = name[len(prefix):].strip()
+                        break
+        name = name or record['name']
+    else:
+        name = f"{name} - {data['name']}"
+    base, number = name, 2
+    while any(p['type'] == record['type'] and p['name'].casefold() == name.casefold() for p in data['profiles']):
+        name = f'{base} ({number})'
+        number += 1
+    return name
+
+
 def filament_families(records):
     groups = {}
     for record in records:

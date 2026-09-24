@@ -218,6 +218,12 @@ Exact profiles show whether their resolved settings contain printer links,
 conditional restrictions, or no explicit printer restriction. None of these
 labels certify print suitability. Checked selections remain selected across filters.
 
+New filament copies use clean product names without `@System`/printer suffixes
+or the set name. A leading manufacturer name is removed only when it matches
+the resolved `filament_vendor`; that JSON manufacturer field remains unchanged.
+Different copies with the same product name receive `(2)`, `(3)`, etc., rather
+than being merged. Existing saved or installed profiles are not renamed.
+
 Setting tables use bundled Orca English labels, category context, and units.
 Hover over a setting for Orca's explanation and its original JSON key; edit
 dialogs also show this explanation. Draft/library searches accept UI labels or

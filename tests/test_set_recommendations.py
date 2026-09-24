@@ -69,7 +69,7 @@ class RecommendationsTests(unittest.TestCase):
             selected.exec.return_value = QDialog.DialogCode.Accepted
             with patch('profilelab.profile_sets_view.ProfilePicker', return_value=selected), patch.object(QDialog, 'exec', return_value=QDialog.DialogCode.Accepted):
                 view.add(records, library=True)
-                self.assertEqual([p['name'] for p in view.data['profiles']], ['PLA - Test', 'PLA - Test (2)'])
+                self.assertEqual([p['name'] for p in view.data['profiles']], ['PLA', 'PLA (2)'])
                 before = deepcopy(view.data)
                 records[1]['resolve'] = Mock(side_effect=ValueError('Broken parent'))
                 with self.assertRaises(ValueError):

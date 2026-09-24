@@ -27,7 +27,7 @@ from profilelab.profile_sets import set_readiness
 from profilelab.profile_sets import delete_set, rename_profile
 from profilelab.printer_templates import generic_printer, sync_nozzle_variant
 from profilelab.choice_combo import ChoiceComboBox as QComboBox, choose_text
-from profilelab.library_choices import selectable_library_records
+from profilelab.library_choices import selectable_library_records, copy_name
 
 
 class ProfileSetsView(QWidget):
@@ -271,12 +271,8 @@ class ProfileSetsView(QWidget):
         if len(selected) > 1:
             preview = deepcopy(self.data)
             for record in selected:
-                name = f"{record['name']} - {self.data['name']}"
-                base, number = name, 2
-                while any(p['type'] == record['type'] and p['name'].casefold() == name.casefold() for p in preview['profiles']):
-                    name = f'{base} ({number})'
-                    number += 1
                 values, version = record['resolve']()
+                name = copy_name(record, values, preview)
                 source = dict(name=record['name'], vendor=record.get('vendor', ''), path=record.get('path', ''),
                               chain=record.get('source_chain', []), revision=record.get('source_revision', ''), version=version)
                 add_copy(preview, record['type'], name, values, version, source=source)
@@ -285,7 +281,7 @@ class ProfileSetsView(QWidget):
             confirmation.setWindowTitle('Review selected copies')
             confirmation.resize(650, 440)
             layout = QVBoxLayout(confirmation)
-            note = QLabel('Create these independent copies? Names include your set name; duplicates receive a number. '
+            note = QLabel('Create these independent copies? Filaments use product names; duplicates receive a number. '
                           'Next, confirm printer links in Assign profiles and defaults. No defaults are chosen automatically.')
             note.setWordWrap(True)
             layout.addWidget(note)
@@ -306,9 +302,9 @@ class ProfileSetsView(QWidget):
             self.render()
             return
         record = selected[0]
-        name, ok = QInputDialog.getText(self, 'Name your independent copy', 'Profile name:', text=f"{record['name']} - {self.data['name']}")
+        values, version = record['resolve']()
+        name, ok = QInputDialog.getText(self, 'Name your independent copy', 'Profile name:', text=copy_name(record, values, self.data))
         if ok:
-            values, version = record['resolve']()
             source = None
             if library:
                 source = dict(name=record['name'], vendor=record['vendor'], path=record['path'],
