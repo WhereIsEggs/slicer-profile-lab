@@ -223,6 +223,9 @@ or the set name. A leading manufacturer name is removed only when it matches
 the resolved `filament_vendor`; that JSON manufacturer field remains unchanged.
 Different copies with the same product name receive `(2)`, `(3)`, etc., rather
 than being merged. Existing saved or installed profiles are not renamed.
+Process copies also omit `@...` source suffixes, and no category adds the set name
+to new copies. Printer names retain meaningful model/nozzle details. Category
+tabs show names alone; the mixed review list keeps category labels for clarity.
 
 Setting tables use bundled Orca English labels, category context, and units.
 Hover over a setting for Orca's explanation and its original JSON key; edit

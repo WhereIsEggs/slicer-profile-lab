@@ -23,8 +23,8 @@ def copy_name(record, values, data):
                         name = name[len(prefix):].strip()
                         break
         name = name or record['name']
-    else:
-        name = f"{name} - {data['name']}"
+    elif record['type'] == 'process':
+        name = name.split('@', 1)[0].strip() or name
     base, number = name, 2
     while any(p['type'] == record['type'] and p['name'].casefold() == name.casefold() for p in data['profiles']):
         name = f'{base} ({number})'

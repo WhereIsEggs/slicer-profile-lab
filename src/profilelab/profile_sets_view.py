@@ -177,7 +177,7 @@ class ProfileSetsView(QWidget):
                 continue
             self.member_indices.append(i)
             label = {'machine': 'Printer', 'filament': 'Filament', 'process': 'Process'}[p['type']]
-            self.members.addItem(f"{p['name']} — {label}")
+            self.members.addItem(p['name'] if kind else f"{p['name']} — {label}")
         self.status.setText(f"{self.data['name']} · Saved automatically. Incomplete sets can be reopened later.\nMixing profiles changes their compatibility links, not their physical suitability. Review temperatures, filament diameter, nozzle, extruder count, and G-code before use.")
         if kind is None:
             assignments = assignment_map(self.data)
@@ -281,7 +281,7 @@ class ProfileSetsView(QWidget):
             confirmation.setWindowTitle('Review selected copies')
             confirmation.resize(650, 440)
             layout = QVBoxLayout(confirmation)
-            note = QLabel('Create these independent copies? Filaments use product names; duplicates receive a number. '
+            note = QLabel('Create these independent copies? Names omit set-name suffixes; duplicates receive a number. '
                           'Next, confirm printer links in Assign profiles and defaults. No defaults are chosen automatically.')
             note.setWordWrap(True)
             layout.addWidget(note)

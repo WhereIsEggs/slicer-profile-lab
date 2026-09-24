@@ -6,6 +6,14 @@ from profilelab.profile_sets import new_set, add_copy
 
 
 class FilamentCopyNameTests(unittest.TestCase):
+    def test_process_and_printer_names_do_not_include_set_name(self):
+        data = new_set('Variant Test')
+        process = {'name': '0.26 Standard @Old Printer', 'type': 'process'}
+        printer = {'name': 'Gigabot 0.8 nozzle', 'type': 'machine'}
+        self.assertEqual(copy_name(process, {}, data), '0.26 Standard')
+        self.assertEqual(copy_name(printer, {}, data), 'Gigabot 0.8 nozzle')
+        add_copy(data, 'process', '0.26 Standard', {}, '2.4.2')
+        self.assertEqual(copy_name(process, {}, data), '0.26 Standard (2)')
     def test_clean_name_preserves_resolved_vendor(self):
         data = new_set('Variant Test')
         record = {'name': 'Polymaker Panchroma PLA @System', 'type': 'filament', 'vendor': 'BBL'}
