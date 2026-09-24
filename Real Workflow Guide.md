@@ -236,6 +236,18 @@ in **Other settings**. Only stored settings are shown; empty tabs do not add Orc
 defaults. Set compatibility/defaults still use **Assign profiles and defaults…**.
 Draft search spans all tabs while a query is entered. JSON tooltips remain available.
 
+Reinstalling an expanded set skips identical installed profiles and adds new
+variants. If a same-name profile differs, the app lists the conflicts and asks
+before updating. Approved updates keep exact original files under
+`user/default/profilelab-backups/<backup-id>/<category>/`. Close Orca before
+restoring any backup. Nested or differently cased name collisions still require
+renaming rather than overwriting an ambiguous target.
+
+**Rename profile…** updates the selected profile's name and set assignments.
+To keep both old and new versions installed, cancel the update prompt and rename
+the conflicting copies in the set. **Save set as copy…** creates an independent
+saved set; it does not silently rename profiles or remove installed profiles.
+
 To delete an entire saved set, choose it in **My profile sets**, click
 **Delete set…** beside the saved-set selector, and confirm. This moves its saved
 file to `%LOCALAPPDATA%\SlicerProfileLab\sets\deleted\<backup-id>\`.

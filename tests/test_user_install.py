@@ -42,8 +42,47 @@ class UserInstallTests(unittest.TestCase):
             installed = install_user_profiles(package, root / "user")
             self.assertEqual(installed[-1].parent.name, "machine")
             self.assertFalse((root / "user" / "_local").exists())
-            with self.assertRaisesRegex(ValueError, "already exists"):
-                install_user_profiles(package, root / "user")
+            self.assertEqual(install_user_profiles(package, root / "user"), [])
+
+    def test_updates_need_approval_and_keep_backup(self):
+        import json
+        from profilelab.user_install import ProfileConflicts
+        with TemporaryDirectory() as temporary, patch('profilelab.user_install.require_orca_closed'):
+            root = Path(temporary)
+            package = self.package(root)
+            installed = install_user_profiles(package, root / 'user')
+            target = installed[-1]
+            content = json.loads(target.read_text())
+            content['printer_notes'] = 'Existing edits'
+            original = json.dumps(content).encode()
+            target.write_bytes(original)
+            with self.assertRaises(ProfileConflicts) as caught:
+                install_user_profiles(package, root / 'user')
+            self.assertEqual(target.read_bytes(), original)
+            approval = caught.exception.files
+            target.write_bytes(original + b' ')
+            with self.assertRaises(ProfileConflicts):
+                install_user_profiles(package, root / 'user', approved_updates=approval)
+            target.write_bytes(original)
+            self.assertEqual(install_user_profiles(package, root / 'user', approved_updates=approval), [target])
+            backups = list((root / 'user/profilelab-backups').rglob('*.json'))
+            self.assertEqual(len(backups), 1)
+            self.assertEqual(backups[0].read_bytes(), original)
+
+    def test_expanded_package_adds_variant_and_skips_original(self):
+        from copy import deepcopy
+        with TemporaryDirectory() as temporary, patch('profilelab.user_install.require_orca_closed'):
+            root = Path(temporary)
+            package = self.package(root)
+            installed = install_user_profiles(package, root / 'user')
+            originals = {p: p.read_bytes() for p in installed}
+            profiles = exportable_profiles(package)
+            variant = deepcopy(next(p for p in profiles if p['type'] == 'machine'))
+            variant.update(name='Printer 0.8', nozzle_diameter=['0.8'])
+            with patch('profilelab.user_install.exportable_profiles', return_value=profiles + [variant]):
+                added = install_user_profiles(package, root / 'user')
+            self.assertEqual([p.name for p in added], ['Printer 0.8.json'])
+            self.assertTrue(all(p.read_bytes() == content for p, content in originals.items()))
 
     def test_closed_guard_rolls_back_new_files(self):
         with TemporaryDirectory() as temporary:

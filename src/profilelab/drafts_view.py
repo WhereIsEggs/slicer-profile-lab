@@ -17,7 +17,7 @@ from profilelab.setting_editor import display_value, editable_value, SettingDial
 from profilelab.library import library_home, read_snapshot
 from profilelab.profile_choices import compatible_filaments, compatible_processes
 from profilelab.profile_install import read_install_bundle
-from profilelab.user_install import exportable_profiles, install_user_profiles
+from profilelab.user_install import exportable_profiles, install_user_profiles, ProfileConflicts
 from profilelab.draft_package import prepare_draft_profiles, save_named_package
 from profilelab.orca_bundle import export_orca_bundle
 from profilelab.package_preview import PackagePreview, package_groups
@@ -143,10 +143,19 @@ class DraftsView(QWidget):
             profiles = exportable_profiles(Path(selected))
             groups = package_groups(profiles)
             preview = f'Destination: {destination_label}\n{target}\n\n' + "\n".join(f"{group}: {len(names)}" for group, names in groups.items() if names)
-            answer = QMessageBox.question(self, "Install prepared profiles", "Close OrcaSlicer before continuing.\n\n" + preview + "\n\nYour printer, materials and processes will be installed as user profiles, ready to export from OrcaSlicer. Their saved parent settings are included automatically. Existing profiles will not be replaced.\n\nAfter installation, open OrcaSlicer and select the new printer.", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            answer = QMessageBox.question(self, "Install prepared profiles", "Close OrcaSlicer before continuing.\n\n" + preview + "\n\nYour printer, materials and processes will be installed as user profiles, ready to export from OrcaSlicer. Their saved parent settings are included automatically. Identical profiles are skipped; changed profiles require approval and are backed up before updating.\n\nAfter installation, open OrcaSlicer and select the new printer.", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
             if answer != QMessageBox.StandardButton.Yes:
                 return
-            installed = install_user_profiles(Path(selected), target)
+            try:
+                installed = install_user_profiles(Path(selected), target)
+            except ProfileConflicts as conflict:
+                names = '\n'.join(p.stem for p in conflict.files)
+                answer = QMessageBox.question(self, 'Update installed profiles?',
+                    f'These profiles have changed:\n{names}\n\nUpdate them? Original files will be backed up in:\n{target / "profilelab-backups"}\n\nUnchanged profiles are skipped. Choose No to cancel and use Rename profile to keep both versions.',
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+                if answer != QMessageBox.StandardButton.Yes:
+                    return
+                installed = install_user_profiles(Path(selected), target, approved_updates=conflict.files)
             printers = ", ".join(groups["Printers"])
             outcome = "Installed successfully." if installed else "This exact package is already installed."
             outcome += f'\nDestination: {destination_label}\n{target}'

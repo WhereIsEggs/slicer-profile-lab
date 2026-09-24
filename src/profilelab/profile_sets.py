@@ -113,6 +113,32 @@ def assignment_map(data):
     }}
 
 
+def rename_profile(data, index, name):
+    _safe_name(name)
+    profile = data['profiles'][index]
+    kind, old = profile['type'], profile['name']
+    if any(i != index and p['type'] == kind and p['name'].casefold() == name.casefold() for i, p in enumerate(data['profiles'])):
+        raise ValueError('Choose a unique profile name in this category.')
+    assignments = assignment_map(data)
+    if kind == 'machine' and old in assignments:
+        assignments[name] = assignments.pop(old)
+    field = {'filament': 'filaments', 'process': 'processes'}.get(kind)
+    for choice in assignments.values():
+        if field:
+            choice[field] = [name if n == old else n for n in choice.get(field, [])]
+        defaults = choice.get('defaults', {})
+        if kind == 'filament':
+            defaults['filaments'] = [name if n == old else n for n in defaults.get('filaments', [])]
+        elif kind == 'process' and defaults.get('process') == old:
+            defaults['process'] = name
+    data['printer_assignments'] = assignments
+    sources = data.get('sources', {})
+    if kind + '/' + old in sources:
+        sources[kind + '/' + name] = sources.pop(kind + '/' + old)
+    profile['name'] = name
+    profile[IDENTITIES[kind]] = [name] if kind == 'filament' else name
+
+
 def set_readiness(data):
     """Collect actionable assignment gaps without modifying an incomplete set."""
     issues = []

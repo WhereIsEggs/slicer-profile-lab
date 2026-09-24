@@ -24,7 +24,7 @@ from profilelab.profile_picker import ProfilePicker
 from profilelab.set_assignments import AssignmentsDialog
 from profilelab.profile_sets import assignment_map
 from profilelab.profile_sets import set_readiness
-from profilelab.profile_sets import delete_set
+from profilelab.profile_sets import delete_set, rename_profile
 from profilelab.choice_combo import ChoiceComboBox as QComboBox, choose_text
 from profilelab.library_choices import selectable_library_records
 
@@ -56,14 +56,14 @@ class ProfileSetsView(QWidget):
             self.steps.addTab(title)
         layout.addWidget(self.steps)
         actions = QHBoxLayout()
-        for text, callback in [('New set', self.create), ('Create from scratch…', self.create_scratch), ('Add from library', self.add_library),
+        for text, callback in [('New set', self.create), ('Save set as copy…', self.copy_set), ('Create from scratch…', self.create_scratch), ('Add from library', self.add_library),
                                ('Add from drafts', self.add_draft)]:
             button = QPushButton(text)
             button.clicked.connect(lambda checked=False, fn=callback: self.run(fn))
             actions.addWidget(button)
         layout.addLayout(actions)
         package_actions = QHBoxLayout()
-        for text, callback in [('Duplicate as variant…', self.duplicate), ('Remove selected', self.remove), ('Assign profiles and defaults…', self.defaults), ('Prepare and install…', self.package)]:
+        for text, callback in [('Duplicate as variant…', self.duplicate), ('Rename profile…', self.rename_selected), ('Remove selected', self.remove), ('Assign profiles and defaults…', self.defaults), ('Prepare and install…', self.package)]:
             button = QPushButton(text)
             button.clicked.connect(lambda checked=False, fn=callback: self.run(fn))
             package_actions.addWidget(button)
@@ -215,6 +215,29 @@ class ProfileSetsView(QWidget):
             self.data = new_set(name.strip())
             self.steps.setCurrentIndex(0)
             self.persist()
+
+    def copy_set(self):
+        if self.data is None:
+            return
+        name, ok = QInputDialog.getText(self, 'Save set as copy', 'New set name (profile names stay unchanged):', text=self.data['name'] + ' - Copy')
+        if ok:
+            identity = new_set(name.strip())
+            copied = deepcopy(self.data)
+            copied.update(id=identity['id'], name=identity['name'])
+            save_set(self.root, copied)
+            self.data = copied
+            self.persist()
+
+    def rename_selected(self):
+        index = self.selected_index()
+        if index < 0:
+            return
+        name, ok = QInputDialog.getText(self, 'Rename profile', 'New name (set assignments update automatically):', text=self.data['profiles'][index]['name'])
+        if ok:
+            rename_profile(self.data, index, name.strip())
+            self.persist()
+            if index in self.member_indices:
+                self.members.setCurrentRow(self.member_indices.index(index))
 
     def add(self, records, library=False):
         if self.data is None:
