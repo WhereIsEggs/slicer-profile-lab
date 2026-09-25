@@ -14,7 +14,7 @@ def install_destination():
         folder = (root / data['data_dir']).resolve()
         if not folder.is_dir():
             raise ValueError('The configured Orca test data folder is missing. No profiles were installed.')
-        return folder / 'user' / 'default', 'Orca 2.5 test environment — open with Start Orca 2.5 Test'
+        return folder / 'user' / 'default', data.get('label', 'Isolated Orca test environment')
     if not os.environ.get('APPDATA'):
         raise ValueError('The Windows user profile location could not be found.')
     return Path(os.environ['APPDATA']) / 'OrcaSlicer' / 'user' / 'default', 'Normal OrcaSlicer user profiles'

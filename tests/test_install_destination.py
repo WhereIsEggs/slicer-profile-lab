@@ -24,7 +24,9 @@ class InstallDestinationTests(unittest.TestCase):
                 (root / 'test-data').mkdir()
                 target, label = install_destination()
                 self.assertEqual(target, root / 'test-data/user/default')
-                self.assertIn('2.5', label)
+                self.assertIn('Isolated', label)
+                (root / 'local-orca-test.json').write_text('{"data_dir":"test-data","label":"Orca 2.4.2 test environment"}')
+                self.assertEqual(install_destination()[1], 'Orca 2.4.2 test environment')
 
     def test_no_local_override_uses_normal_profiles(self):
         with TemporaryDirectory() as temp, patch.dict('os.environ', {'APPDATA': 'C:/normal'}):
