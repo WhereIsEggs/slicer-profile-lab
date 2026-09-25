@@ -14,5 +14,5 @@ if not exist "%PROFILELAB_TEST_DATA%" (
   exit /b 1
 )
 rem Uses the installed stable executable, but never the normal work profile folder.
-start "" "%PROFILELAB_TEST_EXE%" --datadir "%PROFILELAB_TEST_DATA%" --no-single-instance
+start "" /D "%ProgramFiles%\OrcaSlicer" "%PROFILELAB_TEST_EXE%" --datadir "%PROFILELAB_TEST_DATA%"
 endlocal
